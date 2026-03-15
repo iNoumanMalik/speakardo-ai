@@ -1,13 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from database import engine, Base
 import models
 import routers.reminders
 import routers.chat
+from services.scheduler import start_scheduler
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="AI Reminder App MVP")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start the background scheduler
+    scheduler = start_scheduler()
+    yield
+    # Shutdown: Stop the scheduler
+    scheduler.shutdown()
+
+app = FastAPI(title="AI Reminder App", lifespan=lifespan)
+
 
 app.add_middleware(
     CORSMiddleware,

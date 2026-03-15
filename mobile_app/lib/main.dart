@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
-import 'screens/chat_screen.dart';
+import 'package:provider/provider.dart';
+import 'screens/main_screen.dart';
+import 'services/chat_provider.dart';
+import 'services/reminder_provider.dart';
 
 void main() {
-  runApp(const AiReminderApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => ChatProvider()),
+        ChangeNotifierProvider(create: (context) => ReminderProvider()),
+      ],
+      child: const AiReminderApp(),
+    ),
+  );
 }
 
 class AiReminderApp extends StatelessWidget {
@@ -14,17 +25,11 @@ class AiReminderApp extends StatelessWidget {
       title: 'AI Reminder App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.deepPurple,
-        primaryColor: const Color(0xFF6750A4),
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          elevation: 1,
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6750A4)),
         useMaterial3: true,
       ),
-      home: const ChatScreen(),
+      home: const MainScreen(),
     );
   }
 }
+
