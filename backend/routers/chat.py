@@ -9,7 +9,7 @@ from ai_service.extractor import extract_reminder_details
 
 router = APIRouter()
 
-@router.post("/", response_model=schemas.ChatResponse)
+@router.post("", response_model=schemas.ChatResponse)
 async def process_chat(request: schemas.ChatRequest):
     # Pass user message to AI service for extraction
     parsed_data = await extract_reminder_details(request.message)

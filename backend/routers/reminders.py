@@ -7,7 +7,7 @@ from uuid import UUID
 
 router = APIRouter()
 
-@router.post("/", response_model=schemas.ReminderResponse)
+@router.post("", response_model=schemas.ReminderResponse)
 def create_reminder(reminder: schemas.ReminderCreate, db: Session = Depends(get_db)):
     db_reminder = models.Reminder(
         task=reminder.task,
@@ -21,7 +21,7 @@ def create_reminder(reminder: schemas.ReminderCreate, db: Session = Depends(get_
     db.refresh(db_reminder)
     return db_reminder
 
-@router.get("/", response_model=list[schemas.ReminderResponse])
+@router.get("", response_model=list[schemas.ReminderResponse])
 def get_reminders(db: Session = Depends(get_db)):
     return db.query(models.Reminder).all()
 
