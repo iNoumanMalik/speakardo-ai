@@ -2,11 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database import engine, Base
+from dotenv import load_dotenv
 import models
 import routers.reminders
 import routers.chat
 from services.scheduler import start_scheduler
 
+load_dotenv()
 Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager

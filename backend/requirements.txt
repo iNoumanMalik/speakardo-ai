@@ -9,3 +9,4 @@ python-dotenv
 openai
 google-generativeai
 APScheduler
+deepseek
