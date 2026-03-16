@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/message.dart';
 import 'api_service.dart';
+import 'package:intl/intl.dart';
 
 class ChatProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -61,9 +62,9 @@ class ChatProvider with ChangeNotifier {
       // routers/reminders.py expects {task, datetime, repeat, user_id}
       
       final String task = reminderData['task'] ?? 'No Task';
-      final String date = reminderData['date'] ?? '2026-03-15';
+      final String date = reminderData['date'] ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
       final String time = reminderData['time'] ?? '00:00';
-      final String repeat = reminderData['repeat'];
+      final String? repeat = reminderData['repeat'];
       
       final DateTime datetime = DateTime.parse('${date}T${time}:00');
 
