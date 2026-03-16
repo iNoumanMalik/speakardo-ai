@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'chat_screen.dart';
 import 'reminders_screen.dart';
+import '../services/reminder_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({Key? key}) : super(key: key);
@@ -30,6 +32,10 @@ class _MainScreenState extends State<MainScreen> {
           setState(() {
             _selectedIndex = index;
           });
+
+          if (index == 1) {
+            context.read<ReminderProvider>().fetchReminders();
+          }
         },
         items: const [
           BottomNavigationBarItem(
