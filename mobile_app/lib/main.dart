@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -8,8 +11,11 @@ import 'services/reminder_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await FirebaseMessagingService.initializeAndRegisterToken();
+  // Web requires FirebaseOptions (e.g. flutterfire configure → firebase_options.dart).
+  // Android/iOS use google-services / GoogleService-Info without that file.
+  if (!kIsWeb) {
+    await Firebase.initializeApp();
+  }
 
   runApp(
     MultiProvider(
@@ -20,6 +26,12 @@ Future<void> main() async {
       child: const AiReminderApp(),
     ),
   );
+
+  // FCM + backend registration can block for a long time (no server, slow
+  // emulator, getToken). Never hold the splash screen for it.
+  if (!kIsWeb) {
+    unawaited(FirebaseMessagingService.initializeAndRegisterToken());
+  }
 }
 
 class AiReminderApp extends StatelessWidget {

@@ -14,7 +14,8 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     bool isUser = message.isUser;
-    bool hasPending = message.pendingReminder != null;
+    final pending = message.pendingReminder;
+    final bool showConfirm = pending != null && pending['confirmable'] != false;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -43,7 +44,7 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (hasPending)
+          if (showConfirm)
             Padding(
               padding: const EdgeInsets.only(top: 8.0, left: 4.0),
               child: Row(

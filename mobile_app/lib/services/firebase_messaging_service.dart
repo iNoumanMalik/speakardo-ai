@@ -75,7 +75,13 @@ class FirebaseMessagingService {
       await _showForegroundNotification(message);
     });
 
-    final token = await messaging.getToken();
+    final token = await messaging.getToken().timeout(
+      const Duration(seconds: 20),
+      onTimeout: () {
+        debugPrint('FCM getToken timed out (emulator / Play services)');
+        return null;
+      },
+    );
     if (token == null || token.isEmpty) {
       debugPrint('FCM token unavailable');
       return;

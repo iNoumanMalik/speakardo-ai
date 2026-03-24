@@ -6,18 +6,42 @@ class ApiService {
   static final String baseUrl = AppConfig.baseUrl; // Dynamic based on platform
 
 
-  // Send message to get parsed reminder and confirmation text
-  Future<Map<String, dynamic>> sendMessage(String message) async {
+  /// Phase 2: optional [pendingContext] and [recentReminders] for clarification + edits.
+  Future<Map<String, dynamic>> sendMessage(
+    String message, {
+    Map<String, dynamic>? pendingContext,
+    List<Map<String, dynamic>>? recentReminders,
+  }) async {
+    final body = <String, dynamic>{'message': message};
+    if (pendingContext != null && pendingContext.isNotEmpty) {
+      body['pending_context'] = pendingContext;
+    }
+    if (recentReminders != null && recentReminders.isNotEmpty) {
+      body['recent_reminders'] = recentReminders;
+    }
+
     final response = await http.post(
       Uri.parse('$baseUrl/chat'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'message': message}),
+      body: jsonEncode(body),
     );
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body);
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
       throw Exception('Failed to send message: ${response.statusCode}');
+    }
+  }
+
+  Future<void> patchReminder(String id, Map<String, dynamic> reminderData) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/reminders/$id'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(reminderData),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update reminder: ${response.statusCode}');
     }
   }
 

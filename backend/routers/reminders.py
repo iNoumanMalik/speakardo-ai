@@ -35,6 +35,28 @@ def delete_reminder(reminder_id: UUID, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Reminder deleted successfully"}
 
+@router.patch("/{reminder_id}", response_model=schemas.ReminderResponse)
+def update_reminder(
+    reminder_id: UUID,
+    body: schemas.ReminderUpdate,
+    db: Session = Depends(get_db),
+):
+    db_reminder = (
+        db.query(models.Reminder).filter(models.Reminder.id == reminder_id).first()
+    )
+    if not db_reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    if body.task is not None:
+        db_reminder.task = body.task
+    if body.datetime is not None:
+        db_reminder.datetime = body.datetime
+    if body.repeat is not None:
+        db_reminder.repeat = body.repeat
+    db.commit()
+    db.refresh(db_reminder)
+    return db_reminder
+
+
 @router.patch("/{reminder_id}/complete", response_model=schemas.ReminderResponse)
 def complete_reminder(reminder_id: UUID, db: Session = Depends(get_db)):
     db_reminder = db.query(models.Reminder).filter(models.Reminder.id == reminder_id).first()

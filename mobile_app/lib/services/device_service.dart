@@ -12,7 +12,8 @@ class DeviceService {
     String? userId,
     String? platform,
   }) async {
-    final response = await http.post(
+    final response = await http
+        .post(
       Uri.parse('$_baseUrl/register-device'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -20,6 +21,10 @@ class DeviceService {
         'device_token': token,
         'platform': platform,
       }),
+    )
+        .timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw Exception('register-device timed out (is the API running?)'),
     );
 
     if (response.statusCode != 200) {
