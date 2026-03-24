@@ -9,6 +9,7 @@ import 'services/reminder_provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await FirebaseMessagingService.initializeAndRegisterToken();
 
   runApp(
     MultiProvider(
@@ -26,8 +27,6 @@ class AiReminderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    FirebaseMessagingService.initializeAndRegisterToken();
-
     return MaterialApp(
       title: 'AI Reminder App',
       debugShowCheckedModeBanner: false,
