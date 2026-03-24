@@ -16,6 +16,15 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void _clearPendingReminderFor(Map<String, dynamic> reminderData) {
+    final int idx = _messages.indexWhere(
+      (m) => !m.isUser && m.pendingReminder != null && identical(m.pendingReminder, reminderData),
+    );
+    if (idx != -1) {
+      _messages[idx] = _messages[idx].copyWith(clearPendingReminder: true);
+    }
+  }
+
   Future<void> sendMessage(String text) async {
     // 1. Add user message
     addMessage(Message(
@@ -65,14 +74,17 @@ class ChatProvider with ChangeNotifier {
       final String date = reminderData['date'] ?? DateFormat('yyyy-MM-dd').format(DateTime.now());
       final String time = reminderData['time'] ?? '00:00';
       final String? repeat = reminderData['repeat'];
-      
-      final DateTime datetime = DateTime.parse('${date}T${time}:00');
+
+      final normalizedTime = time.length == 5 ? '$time:00' : time;
+      final DateTime datetime = DateTime.parse('${date}T$normalizedTime');
 
       await _apiService.createReminder({
         'task': task,
         'datetime': datetime.toIso8601String(),
         'repeat': repeat,
       });
+
+      _clearPendingReminderFor(reminderData);
 
       addMessage(Message(
         text: "Reminder saved! I'll remind you to $task on $date at $time.",
@@ -89,5 +101,18 @@ class ChatProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void rejectReminder(Map<String, dynamic> reminderData) {
+    _clearPendingReminderFor(reminderData);
+    addMessage(
+      Message(
+        text:
+            "No problem. Please tell me the reminder again with updated details (for example: 'Remind me to take medicine at 12 PM').",
+        isUser: false,
+        timestamp: DateTime.now(),
+      ),
+    );
+    notifyListeners();
   }
 }

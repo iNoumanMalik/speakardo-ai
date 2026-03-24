@@ -64,7 +64,7 @@ class MessageBubble extends StatelessWidget {
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: () {
-                      // Just clear or ignore
+                      context.read<ChatProvider>().rejectReminder(message.pendingReminder!);
                     },
                     child: const Text("No"),
                   ),

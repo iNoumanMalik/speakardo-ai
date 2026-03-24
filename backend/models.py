@@ -7,6 +7,7 @@ import enum
 
 class ReminderStatus(str, enum.Enum):
     PENDING = "pending"
+    TRIGGERED = "triggered"
     COMPLETED = "completed"
 
 class User(Base):

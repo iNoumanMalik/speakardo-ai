@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from sqlalchemy.orm import Session
 from database import SessionLocal
 import models
 import logging
+from services.notifications import send_push_notification
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +21,15 @@ async def check_due_reminders():
         ).all()
 
         for reminder in due_reminders:
-            logger.info(f"TRIGGERING NOTIFICATION: {reminder.task} for user {reminder.user_id}")
-            
-            # --- PUSH NOTIFICATION LOGIC ---
-            # In a real app, we would call Firebase Cloud Messaging here.
-            # Example: fcm_service.send_push(reminder.user_id, "Reminder", reminder.task)
-            
-            # Mark as COMPLETED for MVP purposes (or TRIGGERED)
-            reminder.status = models.ReminderStatus.COMPLETED.value
-            db.commit()
+            sent = send_push_notification(
+                user_id=str(reminder.user_id) if reminder.user_id else None,
+                task=reminder.task,
+                reminder_id=str(reminder.id),
+            )
+            if sent:
+                # Keep reminder visible in list as triggered until user completes it.
+                reminder.status = models.ReminderStatus.TRIGGERED.value
+                db.commit()
             
     except Exception as e:
         logger.error(f"Error in scheduler job: {e}")
@@ -38,7 +38,7 @@ async def check_due_reminders():
 
 def start_scheduler():
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(check_due_reminders, 'interval', minutes=1)
+    scheduler.add_job(check_due_reminders, "interval", seconds=30)
     scheduler.start()
     logger.info("Scheduler started successfully.")
     return scheduler

@@ -10,3 +10,4 @@ openai
 google-generativeai
 APScheduler
 deepseek
+firebase-admin
