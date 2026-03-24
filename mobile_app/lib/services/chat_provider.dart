@@ -76,11 +76,13 @@ class ChatProvider with ChangeNotifier {
       final String? repeat = reminderData['repeat'];
 
       final normalizedTime = time.length == 5 ? '$time:00' : time;
-      final DateTime datetime = DateTime.parse('${date}T$normalizedTime');
+      // Parse as local wall-clock, then send UTC ISO so backend scheduler
+      // (which compares against UTC) fires at the correct real-world time.
+      final DateTime local = DateTime.parse('${date}T$normalizedTime');
 
       await _apiService.createReminder({
         'task': task,
-        'datetime': datetime.toIso8601String(),
+        'datetime': local.toUtc().toIso8601String(),
         'repeat': repeat,
       });
 

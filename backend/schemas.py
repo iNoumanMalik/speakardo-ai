@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ConfigDict
-from datetime import datetime
+from pydantic import BaseModel, ConfigDict, field_validator
+from datetime import datetime, timezone
 from uuid import UUID
 from typing import Optional
 from models import ReminderStatus
@@ -9,6 +9,14 @@ class ReminderCreate(BaseModel):
     datetime: datetime
     repeat: Optional[str] = None
     user_id: Optional[UUID] = None  # Optional for MVP
+
+    @field_validator("datetime")
+    @classmethod
+    def datetime_as_utc_naive(cls, v: datetime) -> datetime:
+        """Store UTC wall time as naive so scheduler (UTC now) compares correctly."""
+        if v.tzinfo is not None:
+            return v.astimezone(timezone.utc).replace(tzinfo=None)
+        return v
 
 class ReminderResponse(BaseModel):
     id: UUID
