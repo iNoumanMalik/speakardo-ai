@@ -28,3 +28,13 @@ class Reminder(Base):
     repeat = Column(String, nullable=True)
     status = Column(String, default=ReminderStatus.PENDING.value)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class DeviceToken(Base):
+    __tablename__ = "device_tokens"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    token = Column(String, unique=True, nullable=False, index=True)
+    platform = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

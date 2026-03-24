@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'screens/main_screen.dart';
 import 'services/chat_provider.dart';
+import 'services/firebase_messaging_service.dart';
 import 'services/reminder_provider.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   runApp(
     MultiProvider(
       providers: [
@@ -21,6 +26,8 @@ class AiReminderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    FirebaseMessagingService.initializeAndRegisterToken();
+
     return MaterialApp(
       title: 'AI Reminder App',
       debugShowCheckedModeBanner: false,

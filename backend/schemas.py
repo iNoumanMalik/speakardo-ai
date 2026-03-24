@@ -27,3 +27,13 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     parsed_reminder: Optional[dict] = None
+
+
+class DeviceRegisterRequest(BaseModel):
+    user_id: Optional[UUID] = None
+    device_token: str
+    platform: Optional[str] = None
+
+
+class DeviceRegisterResponse(BaseModel):
+    message: str

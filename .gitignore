@@ -82,6 +82,9 @@ mobile_app/android/app/build/
 
 google-services.json
 GoogleService-Info.plist
+mobile_app/android/app/google-services.json
+backend/firebase-service-account.json
+# Firebase
 
 # =========================
 # Database

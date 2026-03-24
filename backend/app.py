@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import models
 import routers.reminders
 import routers.chat
+import routers.devices
 from services.scheduler import start_scheduler
 
 load_dotenv()
@@ -36,3 +37,4 @@ def read_root():
 
 app.include_router(routers.chat.router, prefix="/chat", tags=["chat"])
 app.include_router(routers.reminders.router, prefix="/reminders", tags=["reminders"])
+app.include_router(routers.devices.router, tags=["devices"])

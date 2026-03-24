@@ -1,25 +1,24 @@
 import logging
-import os
 from typing import Optional
+
+from firebase_admin import messaging
+
+from services.firebase import init_firebase
 
 logger = logging.getLogger(__name__)
 
 
 def send_push_notification(
-    user_id: Optional[str], task: str, reminder_id: str
+    device_token: str, user_id: Optional[str], task: str, reminder_id: str
 ) -> bool:
     """
     Best-effort notification sender for MVP.
     - If Firebase is configured, try sending via firebase-admin.
     - Otherwise, log a trigger so reminder delivery is observable/testable.
     """
-    # MVP fallback path to keep milestone testable without Firebase setup.
-    firebase_cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
-    device_token = os.getenv("FCM_DEVICE_TOKEN")
-
-    if not firebase_cred_path or not device_token:
+    if not init_firebase():
         logger.info(
-            "REMINDER NOTIFICATION (fallback): user_id=%s reminder_id=%s task=%s",
+            "REMINDER NOTIFICATION (fallback/no-firebase): user_id=%s reminder_id=%s task=%s",
             user_id,
             reminder_id,
             task,
@@ -27,13 +26,6 @@ def send_push_notification(
         return True
 
     try:
-        import firebase_admin
-        from firebase_admin import credentials, messaging
-
-        if not firebase_admin._apps:
-            cred = credentials.Certificate(firebase_cred_path)
-            firebase_admin.initialize_app(cred)
-
         message = messaging.Message(
             token=device_token,
             notification=messaging.Notification(
