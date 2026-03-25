@@ -16,7 +16,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
-  double _confidence = 1.0;
+  String _sttStatusText = '';
+  int _noMatchRetries = 0;
+  static const int _maxNoMatchRetries = 2;
 
   @override
   void initState() {
@@ -26,27 +28,92 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _initSpeech() async {
     await Permission.microphone.request();
-    bool available = await _speech.initialize(
-      onStatus: (status) => debugPrint('STT Status: $status'),
-      onError: (errorNotification) => debugPrint('STT Error: $errorNotification'),
+    await _speech.initialize(
+      onStatus: _onSpeechStatus,
+      onError: _onSpeechError,
     );
     if (mounted) setState(() {});
   }
 
+  void _onSpeechStatus(String status) {
+    debugPrint('STT Status: $status');
+    if (!mounted) return;
+    setState(() {
+      _sttStatusText = status;
+      if (status == 'notListening' || status == 'done') {
+        _isListening = false;
+      }
+    });
+  }
+
+  void _onSpeechError(stt.SpeechRecognitionError error) {
+    debugPrint('STT Error: $error');
+    if (!mounted) return;
+
+    // Emulator frequently returns no_match quickly; retry briefly.
+    if (error.errorMsg == 'error_no_match' && _noMatchRetries < _maxNoMatchRetries) {
+      _noMatchRetries += 1;
+      _startListening();
+      return;
+    }
+
+    setState(() {
+      _isListening = false;
+      _sttStatusText = error.errorMsg;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Voice input error: ${error.errorMsg}. Try speaking clearly.'),
+      ),
+    );
+  }
+
+  Future<void> _startListening() async {
+    final available = await _speech.initialize(
+      onStatus: _onSpeechStatus,
+      onError: _onSpeechError,
+    );
+    if (!available) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Speech recognition is not available on this device.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isListening = true;
+      _sttStatusText = 'listening';
+    });
+
+    await _speech.listen(
+      listenFor: const Duration(seconds: 12),
+      pauseFor: const Duration(seconds: 3),
+      partialResults: true,
+      cancelOnError: true,
+      onResult: (val) => setState(() {
+        _textController.text = val.recognizedWords;
+      }),
+    );
+  }
+
   void _listen() async {
     if (!_isListening) {
-      bool available = await _speech.initialize();
-      if (available) {
-        setState(() => _isListening = true);
-        _speech.listen(
-          onResult: (val) => setState(() {
-            _textController.text = val.recognizedWords;
-            if (val.hasConfidenceRating && val.confidence > 0) {
-              _confidence = val.confidence;
-            }
-          }),
+      final permission = await Permission.microphone.request();
+      if (!permission.isGranted) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Microphone permission is required for voice input.'),
+          ),
         );
+        return;
       }
+      _noMatchRetries = 0;
+      await _startListening();
     } else {
       setState(() => _isListening = false);
       _speech.stop();
@@ -66,7 +133,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Reminder'),
+        title: const Text('Ethereal AI Reminder'),
         elevation: 1,
       ),
       body: SafeArea(
@@ -99,6 +166,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 return const SizedBox.shrink();
               },
             ),
+            if (_sttStatusText.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  _isListening ? 'Listening...' : 'Voice: $_sttStatusText',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _isListening ? Colors.red : Colors.grey[600],
+                  ),
+                ),
+              ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
               decoration: BoxDecoration(
