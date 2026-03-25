@@ -19,7 +19,35 @@ load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
 if genai and api_key:
+
     client = genai.Client(api_key=api_key)
+    try:
+        models = client.models.list()
+        available_models = [m.name for m in models if "gemini" in m.name]
+        print(f"Available Gemini models: {available_models}")
+        
+        # Choose the best available (prioritized order)
+        if "models/gemini-2.5-flash" in available_models:
+            model_name = "models/gemini-2.5-flash"  # Latest flash (fast & capable)
+        elif "models/gemini-flash-latest" in available_models:
+            model_name = "models/gemini-flash-latest"  # Auto-updating flash
+        elif "models/gemini-2.0-flash" in available_models:
+            model_name = "models/gemini-2.0-flash"  # Stable flash
+        elif "models/gemini-2.0-flash-lite" in available_models:
+            model_name = "models/gemini-2.0-flash-lite"  # Lite version (cheaper)
+        elif "models/gemini-2.5-pro" in available_models:
+            model_name = "models/gemini-2.5-pro"  # Pro version (more powerful)
+        else:
+            # Fallback to any available Gemini model (excluding preview)
+            gemini_models = [m for m in available_models if "gemini" in m and "preview" not in m]
+            model_name = gemini_models[0] if gemini_models else "models/gemini-2.5-flash"
+        
+        print(f"Selected model: {model_name}")
+    
+    except Exception as e:
+        print(f"Could not list models: {e}")
+        model_name = "models/gemini-2.5-flash"  # Safe fallback
+    
     safety_settings = [
         types.SafetySetting(
             category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -30,7 +58,6 @@ if genai and api_key:
             threshold=types.HarmBlockThreshold.BLOCK_NONE,
         ),
     ]
-    model_name = "gemini-flash-latest"
 else:
     client = None
     model_name = None
@@ -43,7 +70,13 @@ def _today_utc() -> str:
 def _normalize_parsed(raw: dict) -> dict:
     """Fill defaults and normalize flags from model output."""
     out = dict(raw)
-    for key in ("task", "date", "time", "clarification_question", "editable_reminder_id"):
+    for key in (
+        "task",
+        "date",
+        "time",
+        "clarification_question",
+        "editable_reminder_id",
+    ):
         if out.get(key) == "":
             out[key] = None
     if out.get("time"):
@@ -115,12 +148,15 @@ def get_mock_reminder(
                 pass
 
     if not task:
-        task = re.sub(
-            r"^remind me to\s+",
-            "",
-            text,
-            flags=re.I,
-        ).strip() or f"Task from: {message[:40]}"
+        task = (
+            re.sub(
+                r"^remind me to\s+",
+                "",
+                text,
+                flags=re.I,
+            ).strip()
+            or f"Task from: {message[:40]}"
+        )
 
     if "tomorrow" in text:
         d = datetime.now(timezone.utc).date() + timedelta(days=1)
@@ -178,7 +214,9 @@ async def extract_reminder_details(
         return get_mock_reminder(message, pending_context)
 
     now = datetime.now()
-    ctx_json = json.dumps(pending_context, ensure_ascii=False) if pending_context else "null"
+    ctx_json = (
+        json.dumps(pending_context, ensure_ascii=False) if pending_context else "null"
+    )
     recent_json = (
         json.dumps(recent_reminders, ensure_ascii=False) if recent_reminders else "[]"
     )
