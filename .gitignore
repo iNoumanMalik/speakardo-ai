@@ -98,3 +98,10 @@ backend/firebase-service-account.json
 # =========================
 
 coverage/
+
+
+# =========================
+# Local Text Files
+# =========================
+
+commands.txt

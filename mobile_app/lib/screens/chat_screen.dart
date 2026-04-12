@@ -19,6 +19,8 @@ class _ChatScreenState extends State<ChatScreen>
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _speechAvailable = false;
   bool _isListening = false;
+  /// True from mic tap-start until tap-stop finishes (plugin may stop early).
+  bool _micSessionOpen = false;
   String? _localeId;
   String _lastRecognizedWords = '';
   AnimationController? _pulseController;
@@ -39,6 +41,8 @@ class _ChatScreenState extends State<ChatScreen>
 
   @override
   void dispose() {
+    _micSessionOpen = false;
+    _speech.stop();
     _pulseController?.dispose();
     _textController.dispose();
     super.dispose();
@@ -66,8 +70,10 @@ class _ChatScreenState extends State<ChatScreen>
   void _onSpeechStatus(String status) {
     debugPrint('STT Status: $status');
     if (!mounted) return;
-    setState(() {
-      if (status == 'notListening' || status == 'done') {
+    // While user still has mic "on", plugin may flip notListening between
+    // segments — don't tear down UI until session ends or user stops.
+    if ((status == 'notListening' || status == 'done') && !_micSessionOpen) {
+      setState(() {
         _isListening = false;
         _pulseController?.stop();
         _pulseController?.reset();
@@ -77,8 +83,8 @@ class _ChatScreenState extends State<ChatScreen>
             TextPosition(offset: _textController.text.length),
           );
         }
-      }
-    });
+      });
+    }
   }
 
   void _onSpeechError(dynamic error) {
@@ -87,8 +93,18 @@ class _ChatScreenState extends State<ChatScreen>
 
     final String errorMsg = error?.errorMsg?.toString() ?? error.toString();
     final transient =
-        errorMsg.contains('error_no_match') || errorMsg.contains('error_speech_timeout');
+        errorMsg.contains('error_no_match') ||
+        errorMsg.contains('error_speech_timeout');
+    final softRecover =
+        transient || errorMsg.contains('error_client');
 
+    // These often end the current listen() Future; the session loop starts
+    // another pass — do not turn off the mic until the user taps stop.
+    if (softRecover && _micSessionOpen) {
+      return;
+    }
+
+    _micSessionOpen = false;
     setState(() {
       _isListening = false;
     });
@@ -102,6 +118,28 @@ class _ChatScreenState extends State<ChatScreen>
         ),
       );
     }
+  }
+
+  Future<void> _runSpeechListen() async {
+    if (!_speechAvailable || !_micSessionOpen) return;
+    await _speech.listen(
+      listenFor: const Duration(seconds: 60),
+      pauseFor: const Duration(seconds: 30),
+      localeId: _localeId,
+      partialResults: true,
+      cancelOnError: false,
+      listenMode: stt.ListenMode.dictation,
+      onResult: (val) => setState(() {
+        final words = val.recognizedWords.trim();
+        if (words.isNotEmpty) {
+          _lastRecognizedWords = words;
+          _textController.text = words;
+          _textController.selection = TextSelection.fromPosition(
+            TextPosition(offset: _textController.text.length),
+          );
+        }
+      }),
+    );
   }
 
   Future<void> _startListening() async {
@@ -127,40 +165,33 @@ class _ChatScreenState extends State<ChatScreen>
       return;
     }
 
+    _micSessionOpen = true;
+
     setState(() {
       _isListening = true;
     });
     _pulseController?.repeat(reverse: true);
 
-    await _speech.listen(
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 6),
-      localeId: _localeId,
-      partialResults: true,
-      cancelOnError: false,
-      listenMode: stt.ListenMode.dictation,
-      onResult: (val) => setState(() {
-        final words = val.recognizedWords.trim();
-        if (words.isNotEmpty) {
-          _lastRecognizedWords = words;
-          _textController.text = words;
-          _textController.selection = TextSelection.fromPosition(
-            TextPosition(offset: _textController.text.length),
-          );
-        }
-      }),
-    );
+    // Stay in listen until the user taps the mic again (_micSessionOpen false).
+    // Do not cap passes: on emulators each listen() can return almost instantly,
+    // so a low cap ended the session after only a few seconds.
+    while (mounted && _micSessionOpen) {
+      await _runSpeechListen();
+      if (!mounted || !_micSessionOpen) break;
+      await Future.delayed(const Duration(milliseconds: 400));
+    }
   }
 
   Future<void> _stopListeningAndMaybeSend() async {
-    if (!_isListening) return;
+    if (!_isListening && !_micSessionOpen) return;
+    _micSessionOpen = false;
     setState(() => _isListening = false);
     _pulseController?.stop();
     _pulseController?.reset();
     await _speech.stop();
 
     // Allow final STT result callback to update text before auto-send.
-    await Future.delayed(const Duration(milliseconds: 350));
+    await Future.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
     if (_textController.text.trim().isNotEmpty) {
       _sendMessage();
@@ -217,6 +248,27 @@ class _ChatScreenState extends State<ChatScreen>
       appBar: AppBar(
         title: const Text('Ethereal AI Reminder'),
         elevation: 1,
+        actions: [
+          Consumer<ChatProvider>(
+            builder: (context, chatProvider, _) {
+              return IconButton(
+                tooltip: chatProvider.voiceFeedbackEnabled
+                    ? 'Voice feedback on'
+                    : 'Voice feedback off',
+                icon: Icon(
+                  chatProvider.voiceFeedbackEnabled
+                      ? Icons.volume_up
+                      : Icons.volume_off,
+                ),
+                onPressed: () {
+                  chatProvider.setVoiceFeedbackEnabled(
+                    !chatProvider.voiceFeedbackEnabled,
+                  );
+                },
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(

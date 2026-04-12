@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/message.dart';
 import 'api_service.dart';
 import 'package:intl/intl.dart';
+import 'tts_service.dart';
 
 class ChatProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -10,13 +11,60 @@ class ChatProvider with ChangeNotifier {
 
   /// Last assistant draft for Phase 2 (clarification, time follow-up, edit-in-chat).
   Map<String, dynamic>? _pendingContext;
+  bool _voiceFeedbackEnabled = true;
 
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading;
+  bool get voiceFeedbackEnabled => _voiceFeedbackEnabled;
+
+  void setVoiceFeedbackEnabled(bool enabled) {
+    _voiceFeedbackEnabled = enabled;
+    notifyListeners();
+  }
 
   void addMessage(Message message) {
     _messages.insert(0, message);
     notifyListeners();
+  }
+
+  /// [displayText] is shown in chat; [ttsPhrase] is spoken when non-null (short polish).
+  void _addAssistantMessage(
+    String displayText, {
+    String? ttsPhrase,
+  }) {
+    addMessage(
+      Message(
+        text: displayText,
+        isUser: false,
+        timestamp: DateTime.now(),
+      ),
+    );
+    if (ttsPhrase != null &&
+        ttsPhrase.trim().isNotEmpty &&
+        _voiceFeedbackEnabled) {
+      TtsService.speak(ttsPhrase.trim());
+    }
+  }
+
+  /// Short voice line for assistant replies that also carry a reminder draft.
+  String _shortTtsForDraftReply(
+    String reply,
+    Map<String, dynamic> draft,
+  ) {
+    final confirmable = draft['confirmable'];
+    if (confirmable == true) {
+      return 'Should I save this reminder? Tap yes or no.';
+    }
+    final time = draft['time'];
+    final hasTime = time != null && time.toString().trim().isNotEmpty;
+    if (!hasTime) {
+      return 'What time should I remind you?';
+    }
+    if (reply.toLowerCase().contains('couldn\'t match') ||
+        reply.toLowerCase().contains("couldn't match")) {
+      return 'I could not match that to a saved reminder.';
+    }
+    return 'One quick question.';
   }
 
   void _clearPendingReminderFor(Map<String, dynamic> reminderData) {
@@ -113,43 +161,45 @@ class ChatProvider with ChangeNotifier {
         try {
           await _applyClientAction(Map<String, dynamic>.from(clientAction));
           _pendingContext = null;
-          addMessage(Message(
-            text: reply,
-            isUser: false,
-            timestamp: DateTime.now(),
-          ));
+          _addAssistantMessage(
+            reply,
+            ttsPhrase: 'Reminder updated.',
+          );
         } catch (e) {
-          addMessage(Message(
-            text: 'Could not update reminder: $e',
-            isUser: false,
-            timestamp: DateTime.now(),
-          ));
+          _addAssistantMessage('Could not update reminder: $e');
         }
         return;
       }
 
       if (parsedReminder is Map) {
-        _pendingContext = Map<String, dynamic>.from(parsedReminder);
+        final draft = Map<String, dynamic>.from(parsedReminder);
+        _pendingContext = draft;
         addMessage(Message(
           text: reply,
           isUser: false,
           timestamp: DateTime.now(),
-          pendingReminder: Map<String, dynamic>.from(parsedReminder),
+          pendingReminder: draft,
         ));
+        if (_voiceFeedbackEnabled) {
+          final phrase = _shortTtsForDraftReply(reply, draft);
+          if (phrase.isNotEmpty) {
+            TtsService.speak(phrase);
+          }
+        }
       } else {
         _pendingContext = null;
-        addMessage(Message(
-          text: reply,
-          isUser: false,
-          timestamp: DateTime.now(),
-        ));
+        final lower = reply.toLowerCase();
+        String? tts;
+        if (lower.contains('hello!') || lower.contains("i'm your ai")) {
+          tts = 'Hi! What reminder can I set?';
+        } else if (lower.contains("couldn't quite understand") ||
+            lower.contains('could not quite understand')) {
+          tts = 'Sorry, I did not catch that. Try again.';
+        }
+        _addAssistantMessage(reply, ttsPhrase: tts);
       }
     } catch (e) {
-      addMessage(Message(
-        text: 'Error: $e',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
+      _addAssistantMessage('Error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -183,17 +233,12 @@ class ChatProvider with ChangeNotifier {
       _clearPendingReminderFor(reminderData);
       _pendingContext = null;
 
-      addMessage(Message(
-        text: "Reminder saved! I'll remind you to $task on $date at $time.",
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
+      _addAssistantMessage(
+        "Reminder saved! I'll remind you to $task on $date at $time.",
+        ttsPhrase: 'Reminder saved.',
+      );
     } catch (e) {
-      addMessage(Message(
-        text: 'Failed to save reminder: $e',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ));
+      _addAssistantMessage('Failed to save reminder: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -203,14 +248,10 @@ class ChatProvider with ChangeNotifier {
   void rejectReminder(Map<String, dynamic> reminderData) {
     _clearPendingReminderFor(reminderData);
     _pendingContext = null;
-    addMessage(
-      Message(
-        text:
-            'No problem. Please tell me the reminder again with updated details '
-            '(for example: \'Remind me to take medicine at 12 PM\').',
-        isUser: false,
-        timestamp: DateTime.now(),
-      ),
+    _addAssistantMessage(
+      'No problem. Please tell me the reminder again with updated details '
+      '(for example: \'Remind me to take medicine at 12 PM\').',
+      ttsPhrase: 'Okay. Tell me the reminder again when you are ready.',
     );
     notifyListeners();
   }

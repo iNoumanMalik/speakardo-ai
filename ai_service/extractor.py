@@ -170,6 +170,14 @@ def get_mock_reminder(
         dt = datetime.now(timezone.utc) + timedelta(hours=n)
         date = dt.strftime("%Y-%m-%d")
         time_str = dt.strftime("%H:%M")
+    if "after lunch" in text:
+        time_str = "13:30"
+    if "after dinner" in text:
+        time_str = "20:30"
+    if "tonight" in text:
+        time_str = time_str or "20:00"
+    if "this evening" in text or "evening" in text:
+        time_str = time_str or "18:30"
 
     if not time_str:
         hm = re.search(r"\b(\d{1,2}):(\d{2})\b", message)
@@ -246,6 +254,11 @@ Rules:
 - If the user only gives a time correction ("make it 12", "9pm instead") and pending draft exists, set intent to "refine_draft" and merge into task/date/time/repeat from the draft, applying the change.
 - If no date is mentioned, default date to today ({_today_utc()}) and set needs_time false only when time is present.
 - If the user states a task but NO time (e.g. "remind me to call Ali"), set needs_time true, needs_clarification false, time null.
+- Support conversational time phrases and convert to HH:MM where reasonable:
+  - "after lunch" -> 13:30
+  - "after dinner" -> 20:30
+  - "tonight" -> 20:00
+  - "this evening" -> 18:30
 - If ambiguous (e.g. "3" could be AM/PM), set needs_clarification true and ask one short question in clarification_question.
 - If you cannot determine the task at all, needs_clarification true and clarification_question helpful.
 - For edit_saved: if the user clearly refers to one of the listed reminders, set intent "edit_saved", editable_reminder_id to that id, and new task/date/time/repeat as appropriate.
