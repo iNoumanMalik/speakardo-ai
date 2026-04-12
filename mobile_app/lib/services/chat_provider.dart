@@ -82,28 +82,6 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _recentRemindersPayload() async {
-    try {
-      final list = await _apiService.getReminders();
-      final out = <Map<String, dynamic>>[];
-      for (final raw in list) {
-        if (raw is! Map) continue;
-        final m = Map<String, dynamic>.from(raw);
-        final status = m['status']?.toString();
-        if (status == 'completed') continue;
-        out.add({
-          'id': m['id'],
-          'task': m['task'],
-          'datetime': m['datetime'],
-        });
-        if (out.length >= 20) break;
-      }
-      return out;
-    } catch (_) {
-      return [];
-    }
-  }
-
   DateTime _localDateTimeFromDraft(Map<String, dynamic> action) {
     final String date = action['date'] as String;
     final String time = action['time'] as String;
@@ -149,11 +127,9 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final recent = await _recentRemindersPayload();
       final response = await _apiService.sendMessage(
         text,
         pendingContext: _pendingContext,
-        recentReminders: recent.isEmpty ? null : recent,
       );
 
       final reply = response['reply'] as String? ?? '';

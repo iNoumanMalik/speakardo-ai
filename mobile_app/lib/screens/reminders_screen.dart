@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/auth_provider.dart';
 import '../services/reminder_provider.dart';
 import '../widgets/reminder_card.dart';
 
@@ -25,6 +26,13 @@ class _RemindersScreenState extends State<RemindersScreen> {
       appBar: AppBar(
         title: const Text('My Reminders'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout),
+            onPressed: () => context.read<AuthProvider>().logout(),
+          ),
+        ],
       ),
       body: Consumer<ReminderProvider>(
         builder: (context, provider, child) {

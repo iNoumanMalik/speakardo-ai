@@ -1,14 +1,34 @@
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from datetime import datetime, timezone
 from uuid import UUID
 from typing import Any, Optional
 from models import ReminderStatus
 
+
+class UserRegisterRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserLoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
 class ReminderCreate(BaseModel):
     task: str
     datetime: datetime
     repeat: Optional[str] = None
-    user_id: Optional[UUID] = None  # Optional for MVP
 
     @field_validator("datetime")
     @classmethod
@@ -32,7 +52,6 @@ class ReminderResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     pending_context: Optional[dict[str, Any]] = None
-    recent_reminders: Optional[list[dict[str, Any]]] = None
 
 
 class ChatResponse(BaseModel):
@@ -57,7 +76,6 @@ class ReminderUpdate(BaseModel):
 
 
 class DeviceRegisterRequest(BaseModel):
-    user_id: Optional[UUID] = None
     device_token: str
     platform: Optional[str] = None
 

@@ -1,4 +1,10 @@
-from fastapi import APIRouter
+from typing import Any, Dict, List
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.orm import Session
+
+import models
 import schemas
 import sys
 import os
@@ -6,7 +12,36 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from ai_service.extractor import extract_reminder_details
 
+from database import get_db
+from deps import get_current_user
+from rate_limit import limiter
+
 router = APIRouter()
+
+
+def _server_recent_reminders(db: Session, user_id: UUID, limit: int = 40) -> List[Dict[str, Any]]:
+    rows = (
+        db.query(models.Reminder)
+        .filter(
+            models.Reminder.user_id == user_id,
+            models.Reminder.status != models.ReminderStatus.COMPLETED.value,
+        )
+        .order_by(models.Reminder.datetime.asc())
+        .limit(limit)
+        .all()
+    )
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        out.append(
+            {
+                "id": str(r.id),
+                "task": r.task,
+                "datetime": r.datetime.isoformat() if r.datetime else None,
+                "repeat": r.repeat,
+                "status": r.status,
+            }
+        )
+    return out
 
 
 def _client_reminder_draft(parsed: dict, *, confirmable: bool) -> dict:
@@ -20,8 +55,15 @@ def _client_reminder_draft(parsed: dict, *, confirmable: bool) -> dict:
 
 
 @router.post("", response_model=schemas.ChatResponse)
-async def process_chat(request: schemas.ChatRequest):
-    message_lower = request.message.lower().strip()
+@limiter.limit("60/minute")
+async def process_chat(
+    request: Request,
+    body: schemas.ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _ = request
+    message_lower = body.message.lower().strip()
     greetings = [
         "hi",
         "hello",
@@ -40,10 +82,10 @@ async def process_chat(request: schemas.ChatRequest):
         )
         return schemas.ChatResponse(reply=reply, parsed_reminder=None)
 
-    recent = request.recent_reminders or []
+    recent = _server_recent_reminders(db, current_user.id)
     parsed = await extract_reminder_details(
-        request.message,
-        pending_context=request.pending_context,
+        body.message,
+        pending_context=body.pending_context,
         recent_reminders=recent,
     )
 

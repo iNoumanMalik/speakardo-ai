@@ -15,17 +15,20 @@ async def check_due_reminders():
     db = SessionLocal()
     try:
         now = datetime.now(timezone.utc).replace(tzinfo=None) # Handling naive comparison
-        due_reminders = db.query(models.Reminder).filter(
-            models.Reminder.datetime <= now,
-            models.Reminder.status == models.ReminderStatus.PENDING.value
-        ).all()
+        due_reminders = (
+            db.query(models.Reminder)
+            .filter(
+                models.Reminder.datetime <= now,
+                models.Reminder.status == models.ReminderStatus.PENDING.value,
+                models.Reminder.user_id.isnot(None),
+            )
+            .all()
+        )
 
         for reminder in due_reminders:
-            devices_query = db.query(models.DeviceToken)
-            if reminder.user_id:
-                devices_query = devices_query.filter(
-                    models.DeviceToken.user_id == reminder.user_id
-                )
+            devices_query = db.query(models.DeviceToken).filter(
+                models.DeviceToken.user_id == reminder.user_id
+            )
             device_tokens = devices_query.all()
 
             if not device_tokens:

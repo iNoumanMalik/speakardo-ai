@@ -1,12 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
+import 'services/auth_provider.dart';
 import 'services/chat_provider.dart';
-import 'services/firebase_messaging_service.dart';
 import 'services/reminder_provider.dart';
 
 Future<void> main() async {
@@ -20,17 +19,33 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => ChatProvider()),
-        ChangeNotifierProvider(create: (context) => ReminderProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => ReminderProvider()),
       ],
       child: const AiReminderApp(),
     ),
   );
+}
 
-  // FCM + backend registration can block for a long time (no server, slow
-  // emulator, getToken). Never hold the splash screen for it.
-  if (!kIsWeb) {
-    unawaited(FirebaseMessagingService.initializeAndRegisterToken());
+class _AuthGate extends StatelessWidget {
+  const _AuthGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (!auth.isReady) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (!auth.isLoggedIn) {
+          return const LoginScreen();
+        }
+        return const MainScreen();
+      },
+    );
   }
 }
 
@@ -46,7 +61,7 @@ class AiReminderApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6750A4)),
         useMaterial3: true,
       ),
-      home: const MainScreen(),
+      home: const _AuthGate(),
     );
   }
 }

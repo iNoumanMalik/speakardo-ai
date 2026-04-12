@@ -3,32 +3,42 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
+import 'auth_http.dart';
 
 class DeviceService {
   static final String _baseUrl = AppConfig.baseUrl;
 
   Future<void> registerDeviceToken({
     required String token,
-    String? userId,
     String? platform,
   }) async {
-    final response = await http
-        .post(
+    final response = await AuthHttp.postJson(
       Uri.parse('$_baseUrl/register-device'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'user_id': userId,
+      {
         'device_token': token,
         'platform': platform,
-      }),
-    )
-        .timeout(
+      },
+    ).timeout(
       const Duration(seconds: 10),
-      onTimeout: () => throw Exception('register-device timed out (is the API running?)'),
+      onTimeout: () => http.Response('', 408),
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to register device: ${response.statusCode}');
+      final detail = _parseDetail(response.body);
+      throw Exception(
+        detail ??
+            'Failed to register device: ${response.statusCode}',
+      );
     }
+  }
+
+  static String? _parseDetail(String body) {
+    try {
+      final map = jsonDecode(body);
+      if (map is Map && map['detail'] != null) {
+        return map['detail'].toString();
+      }
+    } catch (_) {}
+    return null;
   }
 }

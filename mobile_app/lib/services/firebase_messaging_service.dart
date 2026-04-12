@@ -8,7 +8,7 @@ import 'device_service.dart';
 
 class FirebaseMessagingService {
   static final DeviceService _deviceService = DeviceService();
-  static bool _bootstrapped = false;
+  static bool _listenersAttached = false;
   static const String _channelId = 'high_importance_channel';
   static const String _channelName = 'High Importance Notifications';
   static const String _channelDescription = 'Reminder alerts';
@@ -55,25 +55,23 @@ class FirebaseMessagingService {
   }
 
   static Future<void> initializeAndRegisterToken() async {
-    if (_bootstrapped) {
-      return;
-    }
-    _bootstrapped = true;
-
     final messaging = FirebaseMessaging.instance;
-    await _setupLocalNotifications();
+    if (!_listenersAttached) {
+      _listenersAttached = true;
+      await _setupLocalNotifications();
 
-    await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
+      await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      debugPrint('Foreground notification: ${message.notification?.title}');
-      await _showForegroundNotification(message);
-    });
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+        debugPrint('Foreground notification: ${message.notification?.title}');
+        await _showForegroundNotification(message);
+      });
+    }
 
     final token = await messaging.getToken().timeout(
       const Duration(seconds: 20),
@@ -92,7 +90,6 @@ class FirebaseMessagingService {
     try {
       await _deviceService.registerDeviceToken(
         token: token,
-        userId: null,
         platform: _platformName(),
       );
     } catch (e) {

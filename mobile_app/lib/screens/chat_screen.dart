@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:ui' as ui;
+import '../services/auth_provider.dart';
 import '../services/chat_provider.dart';
 import '../widgets/message_bubble.dart';
 
@@ -267,6 +268,11 @@ class _ChatScreenState extends State<ChatScreen>
                 },
               );
             },
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout),
+            onPressed: () => context.read<AuthProvider>().logout(),
           ),
         ],
       ),
