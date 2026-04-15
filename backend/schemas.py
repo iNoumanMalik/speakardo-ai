@@ -32,11 +32,11 @@ class ReminderCreate(BaseModel):
 
     @field_validator("datetime")
     @classmethod
-    def datetime_as_utc_naive(cls, v: datetime) -> datetime:
-        """Store UTC wall time as naive so scheduler (UTC now) compares correctly."""
-        if v.tzinfo is not None:
-            return v.astimezone(timezone.utc).replace(tzinfo=None)
-        return v
+    def datetime_as_utc(cls, v: datetime) -> datetime:
+        """Normalize reminder timestamps to timezone-aware UTC."""
+        if v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v.astimezone(timezone.utc)
 
 class ReminderResponse(BaseModel):
     id: UUID
@@ -67,12 +67,12 @@ class ReminderUpdate(BaseModel):
 
     @field_validator("datetime")
     @classmethod
-    def datetime_as_utc_naive(cls, v: Optional[datetime]) -> Optional[datetime]:
+    def datetime_as_utc(cls, v: Optional[datetime]) -> Optional[datetime]:
         if v is None:
             return None
-        if v.tzinfo is not None:
-            return v.astimezone(timezone.utc).replace(tzinfo=None)
-        return v
+        if v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v.astimezone(timezone.utc)
 
 
 class DeviceRegisterRequest(BaseModel):
