@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -18,7 +19,17 @@ from rate_limit import limiter
 from services.scheduler import start_scheduler
 
 load_dotenv()
-Base.metadata.create_all(bind=engine)
+app_env = os.getenv("APP_ENV", "development").strip().lower()
+auto_create_schema = os.getenv("AUTO_CREATE_SCHEMA", "true").strip().lower() == "true"
+
+if app_env not in {"development", "dev"} and auto_create_schema:
+    raise RuntimeError(
+        "AUTO_CREATE_SCHEMA=true is only allowed in development. "
+        "Set AUTO_CREATE_SCHEMA=false and run Alembic migrations before startup."
+    )
+
+if app_env in {"development", "dev"} and auto_create_schema:
+    Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

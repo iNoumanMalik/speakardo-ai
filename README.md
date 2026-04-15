@@ -205,6 +205,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=14
 GEMINI_API_KEY=***
 FIREBASE_CREDENTIALS_PATH=/absolute/path/to/firebase-service-account.json
+DATABASE_URL=postgresql+psycopg2://user:password@localhost:5432/ai_reminder
+AUTO_CREATE_SCHEMA=false
+MAX_DELIVERY_ATTEMPTS=5
+SCHEDULER_INTERVAL_SECONDS=30
+PROCESSING_TIMEOUT_SECONDS=120
 ```
 
 Security migration (required after auth rollout):
@@ -229,6 +234,28 @@ WHERE user_id IS NULL;
 
 If you do not need old data, you can instead delete rows where `user_id IS NULL`
 or reset the local DB.
+
+Run migrations (required for production):
+
+```
+cd backend
+alembic -c alembic.ini upgrade head
+```
+
+Backup strategy (Postgres):
+
+```
+# daily backup
+pg_dump "$DATABASE_URL" > backup_$(date +%F).sql
+
+# restore
+psql "$DATABASE_URL" < backup_2026-04-15.sql
+```
+
+Timezone strategy:
+- Persist all reminder timestamps in UTC.
+- Mobile clients convert to local timezone for display.
+- API should receive ISO-8601 timestamps (with timezone) whenever possible.
 
 Run server:
 
