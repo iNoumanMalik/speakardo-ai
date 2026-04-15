@@ -7,6 +7,8 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from database import Base, engine
+from data_guards import enforce_owned_entities
+from database import SessionLocal
 import models
 import routers.auth
 import routers.chat
@@ -20,6 +22,11 @@ Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    db = SessionLocal()
+    try:
+        enforce_owned_entities(db)
+    finally:
+        db.close()
     # Startup: Start the background scheduler
     scheduler = start_scheduler()
     yield

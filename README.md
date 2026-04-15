@@ -197,6 +197,39 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+Set required backend environment variables (`backend/.env`):
+
+```
+JWT_SECRET=***
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=14
+GEMINI_API_KEY=***
+FIREBASE_CREDENTIALS_PATH=/absolute/path/to/firebase-service-account.json
+```
+
+Security migration (required after auth rollout):
+
+1. Find target user id:
+
+```
+SELECT id, email FROM users;
+```
+
+2. Backfill orphan rows:
+
+```
+UPDATE reminders
+SET user_id = '<USER_UUID>'
+WHERE user_id IS NULL;
+
+UPDATE device_tokens
+SET user_id = '<USER_UUID>'
+WHERE user_id IS NULL;
+```
+
+If you do not need old data, you can instead delete rows where `user_id IS NULL`
+or reset the local DB.
+
 Run server:
 
 ```

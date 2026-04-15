@@ -22,7 +22,7 @@ class Reminder(Base):
     __tablename__ = "reminders"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True) # Optional for MVP testing without auth
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     task = Column(String, index=True, nullable=False)
     datetime = Column(DateTime, nullable=False)
     repeat = Column(String, nullable=True)
@@ -34,7 +34,7 @@ class DeviceToken(Base):
     __tablename__ = "device_tokens"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     token = Column(String, unique=True, nullable=False, index=True)
     platform = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

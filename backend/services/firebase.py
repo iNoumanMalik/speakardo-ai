@@ -19,10 +19,16 @@ def init_firebase() -> bool:
         _initialized = True
         return True
 
-    cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "firebase-service-account.json")
+    cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH", "").strip()
+    if not cred_path:
+        logger.error(
+            "FIREBASE_CREDENTIALS_PATH is not set. Push notifications are disabled."
+        )
+        return False
     if not os.path.exists(cred_path):
-        logger.warning(
-            "Firebase credentials file not found at %s. Push notifications are disabled.",
+        logger.error(
+            "Firebase credentials file not found at FIREBASE_CREDENTIALS_PATH=%s. "
+            "Push notifications are disabled.",
             cred_path,
         )
         return False
