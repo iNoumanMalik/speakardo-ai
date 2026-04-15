@@ -18,7 +18,9 @@ target_metadata = Base.metadata
 
 db_url = os.getenv("DATABASE_URL")
 if db_url:
-    config.set_main_option("sqlalchemy.url", db_url)
+    # ConfigParser treats `%` as interpolation; escape it so URL-encoded
+    # passwords (e.g. `%40` for `@`) work correctly.
+    config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 # Use when you want to review SQL before running or don't have database access.
 
