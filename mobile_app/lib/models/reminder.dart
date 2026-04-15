@@ -16,10 +16,11 @@ class Reminder {
   });
 
   factory Reminder.fromJson(Map<String, dynamic> json) {
+    final utc = DateTime.parse(json['datetime']);
     return Reminder(
       id: json['id'],
       task: json['task'],
-      datetime: DateTime.parse(json['datetime']),
+      datetime: utc.toLocal(),
       repeat: json['repeat'],
       status: json['status'],
     );
