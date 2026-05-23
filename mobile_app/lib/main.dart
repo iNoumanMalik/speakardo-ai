@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:timezone/data/latest_all.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/auth_provider.dart';
 import 'services/chat_provider.dart';
+import 'services/onboarding_storage.dart';
 import 'services/profile_provider.dart';
 import 'services/reminder_provider.dart';
 
@@ -32,21 +34,48 @@ Future<void> main() async {
   );
 }
 
-class _AuthGate extends StatelessWidget {
+class _AuthGate extends StatefulWidget {
   const _AuthGate();
+
+  @override
+  State<_AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<_AuthGate> {
+  bool? _onboardingComplete;
+
+  @override
+  void initState() {
+    super.initState();
+    OnboardingStorage.isComplete().then((done) {
+      if (mounted) {
+        setState(() => _onboardingComplete = done);
+      }
+    });
+  }
+
+  void _onOnboardingFinished() {
+    setState(() => _onboardingComplete = true);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
-        if (!auth.isReady) {
+        if (!auth.isReady || _onboardingComplete == null) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
+
+        if (!auth.isLoggedIn && _onboardingComplete == false) {
+          return OnboardingScreen(onFinished: _onOnboardingFinished);
+        }
+
         if (!auth.isLoggedIn) {
           return const LoginScreen();
         }
+
         return const MainScreen();
       },
     );
@@ -69,4 +98,3 @@ class AiReminderApp extends StatelessWidget {
     );
   }
 }
-

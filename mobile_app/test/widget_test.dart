@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mobile_app/main.dart';
 import 'package:mobile_app/services/auth_provider.dart';
@@ -9,6 +10,10 @@ import 'package:mobile_app/services/profile_provider.dart';
 import 'package:mobile_app/services/reminder_provider.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({'onboarding_complete': true});
+  });
+
   testWidgets('App shows auth bootstrap loading', (WidgetTester tester) async {
     await tester.pumpWidget(
       MultiProvider(
