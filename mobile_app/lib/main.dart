@@ -2,14 +2,17 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:timezone/data/latest_all.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/auth_provider.dart';
 import 'services/chat_provider.dart';
+import 'services/profile_provider.dart';
 import 'services/reminder_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  initializeTimeZones();
   // Web requires FirebaseOptions (e.g. flutterfire configure → firebase_options.dart).
   // Android/iOS use google-services / GoogleService-Info without that file.
   if (!kIsWeb) {
@@ -22,6 +25,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => ReminderProvider()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
       ],
       child: const AiReminderApp(),
     ),

@@ -4,12 +4,14 @@ import '../utils/reminder_grouping.dart';
 
 class ReminderCard extends StatelessWidget {
   final Reminder reminder;
+  final DateTime clock;
   final VoidCallback onComplete;
   final VoidCallback onDelete;
 
   const ReminderCard({
     Key? key,
     required this.reminder,
+    required this.clock,
     required this.onComplete,
     required this.onDelete,
   }) : super(key: key);
@@ -17,9 +19,8 @@ class ReminderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
-    final overdue = isReminderOverdue(reminder, now);
-    final scheduleLabel = formatReminderSchedule(reminder, now);
+    final overdue = isReminderOverdue(reminder, clock);
+    final scheduleLabel = formatReminderSchedule(reminder, clock);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),

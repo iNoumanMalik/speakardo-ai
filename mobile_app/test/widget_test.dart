@@ -1,17 +1,27 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 import 'package:mobile_app/main.dart';
+import 'package:mobile_app/services/auth_provider.dart';
+import 'package:mobile_app/services/chat_provider.dart';
+import 'package:mobile_app/services/profile_provider.dart';
+import 'package:mobile_app/services/reminder_provider.dart';
 
 void main() {
-  testWidgets('App renders main screen', (WidgetTester tester) async {
-    await tester.pumpWidget(const AiReminderApp());
-    expect(find.text('AI Reminder'), findsOneWidget);
+  testWidgets('App shows auth bootstrap loading', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider()),
+          ChangeNotifierProvider(create: (_) => ChatProvider()),
+          ChangeNotifierProvider(create: (_) => ReminderProvider()),
+          ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ],
+        child: const AiReminderApp(),
+      ),
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 }

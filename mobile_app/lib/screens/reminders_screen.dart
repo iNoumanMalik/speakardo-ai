@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/auth_provider.dart';
+import '../services/profile_provider.dart';
 import '../services/reminder_provider.dart';
 import '../utils/reminder_grouping.dart';
+import '../utils/timezone_clock.dart';
 import '../widgets/reminder_card.dart';
 import '../widgets/reminder_section_header.dart';
 
@@ -123,22 +124,20 @@ class _RemindersScreenState extends State<RemindersScreen> {
       appBar: AppBar(
         title: const Text('My Reminders'),
         centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: () => context.read<AuthProvider>().logout(),
-          ),
-        ],
       ),
-      body: Consumer<ReminderProvider>(
-        builder: (context, provider, child) {
+      body: Consumer2<ReminderProvider, ProfileProvider>(
+        builder: (context, provider, profileProvider, child) {
+          final clock = clockNowInTimezone(profileProvider.timezone);
           if (provider.isLoading && provider.reminders.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
 
           final hasAnyReminders = provider.reminders.isNotEmpty;
-          final sections = buildReminderSections(provider.reminders, _filter);
+          final sections = buildReminderSections(
+            provider.reminders,
+            _filter,
+            now: clock,
+          );
 
           if (!hasAnyReminders) {
             return Column(
@@ -173,6 +172,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                         final reminder = section.reminders[index];
                         return ReminderCard(
                           reminder: reminder,
+                          clock: clock,
                           onComplete: () => _completeReminder(reminder.id),
                           onDelete: () => _deleteReminder(reminder.id),
                         );

@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from datetime import datetime, timezone
 from uuid import UUID
@@ -82,3 +84,32 @@ class DeviceRegisterRequest(BaseModel):
 
 class DeviceRegisterResponse(BaseModel):
     message: str
+
+
+class UserProfileResponse(BaseModel):
+    id: UUID
+    email: EmailStr
+    timezone: str
+    notifications_enabled: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserPreferencesUpdate(BaseModel):
+    timezone: Optional[str] = None
+    notifications_enabled: Optional[bool] = None
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Timezone cannot be empty")
+        try:
+            ZoneInfo(cleaned)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError("Invalid timezone") from exc
+        return cleaned

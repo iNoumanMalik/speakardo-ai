@@ -83,6 +83,20 @@ async def check_due_reminders():
                 continue
 
             db.refresh(reminder)
+            user = (
+                db.query(models.User)
+                .filter(models.User.id == reminder.user_id)
+                .first()
+            )
+            if user and not user.notifications_enabled:
+                reminder.status = models.ReminderStatus.TRIGGERED.value
+                reminder.triggered_at = now
+                reminder.next_attempt_at = None
+                reminder.processing_started_at = None
+                reminder.last_error = None
+                db.commit()
+                continue
+
             devices_query = db.query(models.DeviceToken).filter(
                 models.DeviceToken.user_id == reminder.user_id
             )

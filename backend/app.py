@@ -16,6 +16,7 @@ import routers.chat
 import routers.devices
 import routers.health
 import routers.reminders
+import routers.users
 from rate_limit import limiter
 from services.scheduler import start_scheduler
 
@@ -66,4 +67,5 @@ app.include_router(routers.health.router, prefix="/health", tags=["health"])
 app.include_router(routers.auth.router, prefix="/auth", tags=["auth"])
 app.include_router(routers.chat.router, prefix="/chat", tags=["chat"])
 app.include_router(routers.reminders.router, prefix="/reminders", tags=["reminders"])
+app.include_router(routers.users.router, prefix="/users", tags=["users"])
 app.include_router(routers.devices.router, tags=["devices"])

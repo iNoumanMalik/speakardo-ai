@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'chat_screen.dart';
+import 'profile_screen.dart';
 import 'reminders_screen.dart';
+import '../services/profile_provider.dart';
 import '../services/reminder_provider.dart';
 
 class MainScreen extends StatefulWidget {
@@ -14,9 +16,10 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    const ChatScreen(),
-    const RemindersScreen(),
+  final List<Widget> _screens = const [
+    ChatScreen(),
+    RemindersScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -28,6 +31,7 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
+        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -35,6 +39,8 @@ class _MainScreenState extends State<MainScreen> {
 
           if (index == 1) {
             context.read<ReminderProvider>().fetchReminders();
+          } else if (index == 2) {
+            context.read<ProfileProvider>().fetchProfile();
           }
         },
         items: const [
@@ -47,6 +53,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.list_alt_outlined),
             activeIcon: Icon(Icons.list_alt),
             label: 'Reminders',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
         selectedItemColor: const Color(0xFF6750A4),
