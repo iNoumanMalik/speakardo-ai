@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_provider.dart';
+import '../services/feedback_service.dart';
 import '../services/profile_provider.dart';
-import '../utils/timezone_options.dart';
+// Timezone UI hidden (Option A). Kept for future use:
+// import '../utils/timezone_options.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -15,7 +17,9 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final FeedbackService _feedbackService = FeedbackService();
   PackageInfo? _packageInfo;
+  bool _isSubmittingFeedback = false;
 
   @override
   void initState() {
@@ -42,33 +46,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showFaq() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('FAQ'),
-        content: const SingleChildScrollView(
-          child: Text(
-            'How do I create a reminder?\n'
-            'Open the Chat tab and type or speak naturally, e.g. '
-            '"Remind me to take medicine at 9 PM". Confirm when prompted.\n\n'
-            'How do notifications work?\n'
-            'Enable push notifications in Profile and allow permission when asked. '
-            'Reminders fire at the scheduled time in your selected timezone.\n\n'
-            'Can I turn notifications off?\n'
-            'Yes. Use the Push notifications toggle in Profile. '
-            'Reminders still appear in your list.',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
+
+  Future<void> _showFeedbackForm() async {
+    final controller = TextEditingController();
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Send feedback'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tell us what you like or what we should improve.',
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  maxLines: 5,
+                  maxLength: 2000,
+                  decoration: const InputDecoration(
+                    hintText: 'Your feedback...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (controller.text.trim().length < 3) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter at least 3 characters.'),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(context, true);
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (submitted != true || !mounted) return;
+
+    setState(() => _isSubmittingFeedback = true);
+    try {
+      await _feedbackService.submitFeedback(controller.text);
+      if (!mounted) return;
+      _showSuccess('Thanks! Your feedback was submitted.');
+    } catch (_) {
+      if (!mounted) return;
+      _showError('Could not submit feedback. Please try again.');
+    } finally {
+      controller.dispose();
+      if (mounted) {
+        setState(() => _isSubmittingFeedback = false);
+      }
+    }
+  }
+
+  // FAQ removed in favor of in-app feedback.
 
   Future<void> _contactSupport() async {
     final uri = Uri(
@@ -81,62 +138,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // Timezone picker hidden (Option A — device local time for reminders).
+  // Kept for when profile timezone is wired end-to-end.
+  /*
   Future<void> _pickTimezone(ProfileProvider provider) async {
     final options = timezoneOptionsFor(provider.timezone);
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'Select timezone',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: options.length,
-                    itemBuilder: (context, index) {
-                      final tz = options[index];
-                      final selectedTz = tz == provider.timezone;
-                      return ListTile(
-                        title: Text(tz),
-                        trailing: selectedTz
-                            ? const Icon(Icons.check, color: Color(0xFF6750A4))
-                            : null,
-                        onTap: () => Navigator.pop(context, tz),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-
-    if (selected == null || selected == provider.timezone) return;
-
-    final ok = await provider.setTimezone(selected);
-    if (!mounted) return;
-    if (!ok) {
-      _showError('Could not update timezone.');
-    }
+    ...
   }
+  */
 
   Widget _sectionHeader(String title) {
     return Padding(
@@ -214,41 +223,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         }
                       },
               ),
+              // --- Timezone (hidden — Option A uses device local time) ---
+              // ListTile(
+              //   leading: const Icon(Icons.schedule_outlined),
+              //   title: const Text('Timezone'),
+              //   subtitle: Text(profile.timezone),
+              //   trailing: provider.isSaving
+              //       ? const SizedBox(
+              //           width: 20,
+              //           height: 20,
+              //           child: CircularProgressIndicator(strokeWidth: 2),
+              //         )
+              //       : const Icon(Icons.chevron_right),
+              //   onTap: provider.isSaving ? null : () => _pickTimezone(provider),
+              // ),
+              // Padding(
+              //   padding: const EdgeInsets.symmetric(horizontal: 16),
+              //   child: OutlinedButton.icon(
+              //     onPressed: provider.isSaving
+              //         ? null
+              //         : () async {
+              //             final ok = await provider.useDeviceTimezone();
+              //             if (!mounted) return;
+              //             if (!ok) {
+              //               _showError('Could not set device timezone.');
+              //             }
+              //           },
+              //     icon: const Icon(Icons.my_location_outlined),
+              //     label: const Text('Use device timezone'),
+              //   ),
+              // ),
+              _sectionHeader('SUPPORT'),
               ListTile(
-                leading: const Icon(Icons.schedule_outlined),
-                title: const Text('Timezone'),
-                subtitle: Text(profile.timezone),
-                trailing: provider.isSaving
+                leading: const Icon(Icons.rate_review_outlined),
+                title: const Text('Send feedback'),
+                subtitle: const Text('Help us improve the app'),
+                trailing: _isSubmittingFeedback
                     ? const SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.chevron_right),
-                onTap: provider.isSaving ? null : () => _pickTimezone(provider),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: OutlinedButton.icon(
-                  onPressed: provider.isSaving
-                      ? null
-                      : () async {
-                          final ok = await provider.useDeviceTimezone();
-                          if (!mounted) return;
-                          if (!ok) {
-                            _showError('Could not set device timezone.');
-                          }
-                        },
-                  icon: const Icon(Icons.my_location_outlined),
-                  label: const Text('Use device timezone'),
-                ),
-              ),
-              _sectionHeader('SUPPORT'),
-              ListTile(
-                leading: const Icon(Icons.help_outline),
-                title: const Text('FAQ'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _showFaq,
+                onTap: _isSubmittingFeedback ? null : _showFeedbackForm,
               ),
               ListTile(
                 leading: const Icon(Icons.mail_outline),

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/profile_provider.dart';
 import '../services/reminder_provider.dart';
 import '../utils/reminder_grouping.dart';
-import '../utils/timezone_clock.dart';
 import '../widgets/reminder_card.dart';
 import '../widgets/reminder_section_header.dart';
 
@@ -125,9 +123,10 @@ class _RemindersScreenState extends State<RemindersScreen> {
         title: const Text('My Reminders'),
         centerTitle: true,
       ),
-      body: Consumer2<ReminderProvider, ProfileProvider>(
-        builder: (context, provider, profileProvider, child) {
-          final clock = clockNowInTimezone(profileProvider.timezone);
+      body: Consumer<ReminderProvider>(
+        builder: (context, provider, child) {
+          // Option A: use device local time for grouping (not profile timezone).
+          final clock = DateTime.now();
           if (provider.isLoading && provider.reminders.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }

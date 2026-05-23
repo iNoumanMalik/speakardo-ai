@@ -96,6 +96,14 @@ class UserProfileResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class FeedbackCreate(BaseModel):
+    message: str = Field(min_length=3, max_length=2000)
+
+
+class FeedbackResponse(BaseModel):
+    message: str
+
+
 class UserPreferencesUpdate(BaseModel):
     timezone: Optional[str] = None
     notifications_enabled: Optional[bool] = None

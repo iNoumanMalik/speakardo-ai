@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -5,6 +7,8 @@ import models
 import schemas
 from database import get_db
 from deps import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -37,3 +41,20 @@ def update_user_preferences(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.post("/me/feedback", response_model=schemas.FeedbackResponse)
+def submit_feedback(
+    body: schemas.FeedbackCreate,
+    current_user: models.User = Depends(get_current_user),
+):
+    # Delivery channel (email, Slack, DB, etc.) can be wired here later.
+    logger.info(
+        "App feedback from user_id=%s email=%s: %s",
+        current_user.id,
+        current_user.email,
+        body.message.strip(),
+    )
+    return schemas.FeedbackResponse(
+        message="Thank you for your feedback. We appreciate your input.",
+    )

@@ -1,6 +1,7 @@
 import 'package:timezone/timezone.dart' as tz;
 
 /// Returns "now" as a plain [DateTime] in the given IANA timezone.
+/// Not used in the reminders list while Option A (device local) is active.
 DateTime clockNowInTimezone(String timezoneName) {
   try {
     final location = tz.getLocation(timezoneName);
