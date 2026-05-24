@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -10,6 +11,7 @@ from slowapi.errors import RateLimitExceeded
 from database import Base, engine
 from data_guards import enforce_owned_entities
 from database import SessionLocal
+from logging_config import configure_logging
 import models
 import routers.auth
 import routers.chat
@@ -21,6 +23,8 @@ from rate_limit import limiter
 from services.scheduler import start_scheduler
 
 load_dotenv()
+configure_logging()
+logger = logging.getLogger(__name__)
 app_env = os.getenv("APP_ENV", "development").strip().lower()
 auto_create_schema = os.getenv("AUTO_CREATE_SCHEMA", "true").strip().lower() == "true"
 
@@ -35,6 +39,7 @@ if app_env in {"development", "dev"} and auto_create_schema:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("event=app_startup env=%s auto_create_schema=%s", app_env, auto_create_schema)
     db = SessionLocal()
     try:
         enforce_owned_entities(db)
@@ -45,6 +50,7 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown: Stop the scheduler
     scheduler.shutdown()
+    logger.info("event=app_shutdown scheduler=stopped")
 
 app = FastAPI(title="AI Reminder App", lifespan=lifespan)
 app.state.limiter = limiter

@@ -167,7 +167,7 @@ async def extract_reminder_details(
     try:
         router = get_default_router()
     except RuntimeError:
-        logger.warning("AI router not configured. Using mock extractor.")
+        logger.warning("event=ai_extractor_router_missing fallback=mock_extractor")
         return get_mock_reminder(message, pending_context)
 
     now = datetime.now()
@@ -217,6 +217,11 @@ IMPORTANT: Raw JSON only, no code fences.
 """
 
     try:
+        logger.info(
+            "event=ai_extractor_request pending_context=%s recent_reminders_count=%s",
+            bool(pending_context),
+            len(recent_reminders or []),
+        )
         full_prompt = f"{system_prompt}\n\nUser message: {message}"
         result = await router.generate(
             full_prompt,
@@ -224,7 +229,12 @@ IMPORTANT: Raw JSON only, no code fences.
             response_format="json",
         )
         if not result.text:
-            logger.warning("Empty response from AI router (provider=%s)", result.provider)
+            logger.warning(
+                "event=ai_extractor_empty_response provider=%s model=%s fallback_used=%s",
+                result.provider,
+                result.model,
+                result.fallback_used,
+            )
             return None
 
         reply_content = clean_json_response(result.text)
@@ -234,14 +244,28 @@ IMPORTANT: Raw JSON only, no code fences.
             parsed = extract_json_from_text(reply_content)
 
         if not parsed or "task" not in parsed:
+            logger.warning(
+                "event=ai_extractor_invalid_payload provider=%s model=%s",
+                result.provider,
+                result.model,
+            )
             return None
 
+        logger.info(
+            "event=ai_extractor_success provider=%s model=%s fallback_used=%s intent=%s needs_time=%s needs_clarification=%s",
+            result.provider,
+            result.model,
+            result.fallback_used,
+            parsed.get("intent"),
+            parsed.get("needs_time"),
+            parsed.get("needs_clarification"),
+        )
         return _normalize_parsed(parsed)
     except AllProvidersFailedError as e:
-        logger.error("All AI providers failed for extraction: %s", e)
+        logger.error("event=ai_extractor_all_providers_failed error=%s fallback=mock_extractor", e)
         return get_mock_reminder(message, pending_context)
     except Exception as e:
-        logger.error("Error during AI extraction: %s", e)
+        logger.exception("event=ai_extractor_exception error=%s", e)
         return None
 
 

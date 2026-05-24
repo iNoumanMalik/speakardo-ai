@@ -32,6 +32,13 @@ def create_reminder(
     db.add(db_reminder)
     db.commit()
     db.refresh(db_reminder)
+    logger.info(
+        "event=reminder_created user_id=%s reminder_id=%s scheduled_at=%s repeat=%s",
+        current_user.id,
+        db_reminder.id,
+        db_reminder.datetime,
+        db_reminder.repeat,
+    )
     return db_reminder
 
 
@@ -75,6 +82,7 @@ def delete_reminder(
     ).delete(synchronize_session=False)
     db.delete(db_reminder)
     db.commit()
+    logger.info("event=reminder_deleted user_id=%s reminder_id=%s", current_user.id, reminder_id)
     return {"message": "Reminder deleted successfully"}
 
 
@@ -96,6 +104,13 @@ def update_reminder(
         db_reminder.repeat = body.repeat
     db.commit()
     db.refresh(db_reminder)
+    logger.info(
+        "event=reminder_updated user_id=%s reminder_id=%s scheduled_at=%s repeat=%s",
+        current_user.id,
+        db_reminder.id,
+        db_reminder.datetime,
+        db_reminder.repeat,
+    )
     return db_reminder
 
 
@@ -115,6 +130,11 @@ def complete_reminder(
     db_reminder.last_error = None
     db.commit()
     db.refresh(db_reminder)
+    logger.info(
+        "event=reminder_completed user_id=%s reminder_id=%s",
+        current_user.id,
+        reminder_id,
+    )
     return db_reminder
 
 

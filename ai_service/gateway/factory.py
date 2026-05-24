@@ -1,4 +1,5 @@
 import os
+import logging
 from functools import lru_cache
 
 from dotenv import load_dotenv
@@ -8,6 +9,7 @@ from .router import AIRouter
 from .types import ProviderName, RouterConfig
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 def parse_fallback_chain(raw: str | None) -> list[ProviderName]:
@@ -45,5 +47,13 @@ def get_default_router() -> AIRouter:
         timeout_seconds=float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "60")),
         max_retries_per_provider=int(os.getenv("AI_MAX_RETRIES_PER_PROVIDER", "2")),
         retry_backoff_seconds=float(os.getenv("AI_RETRY_BACKOFF_SECONDS", "0.5")),
+    )
+    logger.info(
+        "event=ai_router_configured provider_chain=%s active_providers=%s timeout_s=%s retries=%s backoff_s=%s",
+        ",".join([c.value for c in chain]),
+        ",".join([p.name.value for p in providers]),
+        config.timeout_seconds,
+        config.max_retries_per_provider,
+        config.retry_backoff_seconds,
     )
     return AIRouter(providers=providers, config=config)

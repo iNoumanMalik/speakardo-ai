@@ -29,10 +29,10 @@ def send_push_notification(
     """
     if not init_firebase():
         logger.info(
-            "REMINDER NOTIFICATION (fallback/no-firebase): user_id=%s reminder_id=%s task=%s",
+            "event=push_send provider=fallback success=true user_id=%s reminder_id=%s task_len=%s",
             user_id,
             reminder_id,
-            task,
+            len(task or ""),
         )
         return NotificationResult(success=True, provider_message_id="fallback")
 
@@ -59,7 +59,10 @@ def send_push_notification(
         )
         message_id = messaging.send(message)
         logger.info(
-            "REMINDER NOTIFICATION (fcm): user_id=%s reminder_id=%s", user_id, reminder_id
+            "event=push_send provider=fcm success=true user_id=%s reminder_id=%s message_id=%s",
+            user_id,
+            reminder_id,
+            message_id,
         )
         return NotificationResult(success=True, provider_message_id=message_id)
     except Exception as exc:  # pragma: no cover - external service best-effort
@@ -69,7 +72,12 @@ def send_push_notification(
             or "Requested entity was not found" in msg
             or "Invalid registration token" in msg
         )
-        logger.error("FCM send failed for reminder_id=%s: %s", reminder_id, msg)
+        logger.error(
+            "event=push_send provider=fcm success=false reminder_id=%s invalid_token=%s error=%s",
+            reminder_id,
+            invalid,
+            msg,
+        )
         return NotificationResult(
             success=False,
             permanent_failure=invalid,

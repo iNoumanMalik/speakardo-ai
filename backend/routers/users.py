@@ -40,6 +40,12 @@ def update_user_preferences(
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
+    logger.info(
+        "event=user_preferences_updated user_id=%s timezone=%s notifications_enabled=%s",
+        current_user.id,
+        current_user.timezone,
+        current_user.notifications_enabled,
+    )
     return current_user
 
 
@@ -50,10 +56,10 @@ def submit_feedback(
 ):
     # Delivery channel (email, Slack, DB, etc.) can be wired here later.
     logger.info(
-        "App feedback from user_id=%s email=%s: %s",
+        "event=user_feedback_received user_id=%s email=%s message_len=%s",
         current_user.id,
         current_user.email,
-        body.message.strip(),
+        len(body.message.strip()),
     )
     return schemas.FeedbackResponse(
         message="Thank you for your feedback. We appreciate your input.",

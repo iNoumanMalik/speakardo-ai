@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Dict, List
 from uuid import UUID
 
@@ -17,6 +18,7 @@ from deps import get_current_user
 from rate_limit import limiter
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _server_recent_reminders(db: Session, user_id: UUID, limit: int = 40) -> List[Dict[str, Any]]:
@@ -63,6 +65,12 @@ async def process_chat(
     current_user: models.User = Depends(get_current_user),
 ):
     _ = request
+    logger.info(
+        "event=chat_request user_id=%s message_len=%s has_pending_context=%s",
+        current_user.id,
+        len(body.message or ""),
+        bool(body.pending_context),
+    )
     message_lower = body.message.lower().strip()
     greetings = [
         "hi",
@@ -90,6 +98,7 @@ async def process_chat(
     )
 
     if not parsed:
+        logger.warning("event=chat_parse_failed user_id=%s", current_user.id)
         reply = (
             "I couldn't quite understand that. Please say what to do and when "
             "(for example: 'Remind me to buy milk at 5 PM today')."
@@ -97,6 +106,13 @@ async def process_chat(
         return schemas.ChatResponse(reply=reply, parsed_reminder=None)
 
     intent = parsed.get("intent") or "create"
+    logger.info(
+        "event=chat_parse_result user_id=%s intent=%s needs_time=%s needs_clarification=%s",
+        current_user.id,
+        intent,
+        parsed.get("needs_time"),
+        parsed.get("needs_clarification"),
+    )
     eid = parsed.get("editable_reminder_id")
 
     if intent == "edit_saved" and eid:
