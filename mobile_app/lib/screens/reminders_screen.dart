@@ -6,7 +6,7 @@ import '../widgets/reminder_card.dart';
 import '../widgets/reminder_section_header.dart';
 
 class RemindersScreen extends StatefulWidget {
-  const RemindersScreen({Key? key}) : super(key: key);
+  const RemindersScreen({super.key});
 
   @override
   State<RemindersScreen> createState() => _RemindersScreenState();

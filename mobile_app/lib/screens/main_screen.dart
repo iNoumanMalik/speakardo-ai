@@ -8,7 +8,7 @@ import '../services/profile_provider.dart';
 import '../services/reminder_provider.dart';
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({Key? key}) : super(key: key);
+  const MainScreen({super.key});
 
   @override
   State<MainScreen> createState() => _MainScreenState();

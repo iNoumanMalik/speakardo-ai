@@ -9,12 +9,12 @@ class ReminderCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const ReminderCard({
-    Key? key,
+    super.key,
     required this.reminder,
     required this.clock,
     required this.onComplete,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

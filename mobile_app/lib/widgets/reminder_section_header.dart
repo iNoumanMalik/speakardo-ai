@@ -5,9 +5,9 @@ class ReminderSectionHeader extends StatelessWidget {
   final ReminderSection section;
 
   const ReminderSectionHeader({
-    Key? key,
+    super.key,
     required this.section,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

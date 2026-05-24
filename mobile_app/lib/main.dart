@@ -88,7 +88,7 @@ class _AuthGateState extends State<_AuthGate> {
 }
 
 class AiReminderApp extends StatelessWidget {
-  const AiReminderApp({Key? key}) : super(key: key);
+  const AiReminderApp({super.key});
 
   @override
   Widget build(BuildContext context) {
