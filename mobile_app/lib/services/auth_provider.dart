@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 
 import 'auth_http.dart';
@@ -83,7 +84,10 @@ class AuthProvider extends ChangeNotifier {
       return null;
     } on StateError catch (e) {
       return e.message;
-    } catch (e) {
+    } on FirebaseException catch (e) {
+      return e.message ?? 'Firebase error: ${e.code}';
+    } catch (e, st) {
+      debugPrint('signInWithGoogle error: $e\n$st');
       return 'Google sign-in failed. Please try again.';
     }
   }

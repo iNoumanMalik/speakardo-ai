@@ -9,6 +9,7 @@ import 'package:timezone/data/latest_all.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'config/app_config.dart';
 import 'services/auth_provider.dart';
 import 'services/chat_provider.dart';
 import 'services/onboarding_storage.dart';
@@ -17,6 +18,7 @@ import 'services/reminder_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppConfig.initialize();
   initializeTimeZones();
   // Web requires FirebaseOptions (e.g. flutterfire configure → firebase_options.dart).
   // Android/iOS use google-services / GoogleService-Info without that file.

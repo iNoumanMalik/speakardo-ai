@@ -49,6 +49,7 @@ dependencies {
 
     // Firebase Cloud Messaging (REQUIRED for notifications)
     implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-auth")
 }
 
 flutter {

@@ -37,15 +37,21 @@ Restart the API after changes.
 
 Android needs the **Web OAuth client ID** so Google returns an ID token Firebase can verify.
 
-Run the app with:
+Create `mobile_app/.env` (copy from `mobile_app/.env.example`):
+
+```env
+GOOGLE_WEB_CLIENT_ID=YOUR_WEB_CLIENT_ID.apps.googleusercontent.com
+```
+
+Then run:
 
 ```bash
 cd mobile_app
-flutter run -d emulator-5554 \
-  --dart-define=GOOGLE_WEB_CLIENT_ID=YOUR_FULL_ID.apps.googleusercontent.com
+flutter pub get
+flutter run
 ```
 
-Optional: add the same define to your IDE launch configuration so you don’t type it every time.
+Optional: `--dart-define=GOOGLE_WEB_CLIENT_ID=...` overrides `.env`.
 
 ## 4. iOS URL scheme
 
