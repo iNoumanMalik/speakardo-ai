@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -106,6 +107,33 @@ def complete_reminder(
         raise HTTPException(status_code=404, detail="Reminder not found")
 
     db_reminder.status = models.ReminderStatus.COMPLETED.value
+    db_reminder.processing_started_at = None
+    db_reminder.next_attempt_at = None
+    db_reminder.last_error = None
+    db.commit()
+    db.refresh(db_reminder)
+    return db_reminder
+
+
+@router.post("/{reminder_id}/snooze", response_model=schemas.ReminderResponse)
+def snooze_reminder(
+    reminder_id: UUID,
+    body: schemas.ReminderSnooze,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    db_reminder = _reminder_for_user(db, reminder_id, current_user.id)
+    if not db_reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    now = datetime.now(timezone.utc)
+    db_reminder.datetime = now + timedelta(minutes=body.minutes)
+    db_reminder.status = models.ReminderStatus.PENDING.value
+    db_reminder.triggered_at = None
+    db_reminder.processing_started_at = None
+    db_reminder.next_attempt_at = None
+    db_reminder.attempt_count = 0
+    db_reminder.last_error = None
     db.commit()
     db.refresh(db_reminder)
     return db_reminder

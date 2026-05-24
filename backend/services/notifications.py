@@ -37,13 +37,25 @@ def send_push_notification(
         return NotificationResult(success=True, provider_message_id="fallback")
 
     try:
+        # Data-first payload so Android can show actionable local notifications.
         message = messaging.Message(
             token=device_token,
-            notification=messaging.Notification(
-                title="Reminder",
-                body=task,
+            data={
+                "reminder_id": reminder_id,
+                "user_id": str(user_id or ""),
+                "task": task,
+                "type": "reminder_due",
+            },
+            android=messaging.AndroidConfig(priority="high"),
+            apns=messaging.APNSConfig(
+                headers={"apns-priority": "10"},
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        alert=messaging.ApsAlert(title="Reminder", body=task),
+                        sound="default",
+                    ),
+                ),
             ),
-            data={"reminder_id": reminder_id, "user_id": str(user_id or "")},
         )
         message_id = messaging.send(message)
         logger.info(

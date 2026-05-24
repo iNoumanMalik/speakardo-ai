@@ -73,6 +73,17 @@ class ApiService {
     }
   }
 
+  Future<void> snoozeReminder(String id, int minutes) async {
+    final response = await AuthHttp.postJson(
+      Uri.parse('$baseUrl/reminders/$id/snooze'),
+      {'minutes': minutes},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to snooze reminder');
+    }
+  }
+
   Future<void> deleteReminder(String id) async {
     final response = await AuthHttp.delete(Uri.parse('$baseUrl/reminders/$id'));
 

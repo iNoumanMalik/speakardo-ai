@@ -1,7 +1,11 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
+import 'services/firebase_messaging_service.dart';
+import 'services/notification_action_handler.dart';
+import 'services/reminder_notification_service.dart';
 import 'package:timezone/data/latest_all.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
@@ -19,6 +23,8 @@ Future<void> main() async {
   // Android/iOS use google-services / GoogleService-Info without that file.
   if (!kIsWeb) {
     await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    await ReminderNotificationService.ensureInitialized();
   }
 
   runApp(

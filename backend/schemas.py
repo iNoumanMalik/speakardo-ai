@@ -62,6 +62,17 @@ class ChatResponse(BaseModel):
     client_action: Optional[dict[str, Any]] = None
 
 
+class ReminderSnooze(BaseModel):
+    minutes: int = Field(description="Snooze duration in minutes")
+
+    @field_validator("minutes")
+    @classmethod
+    def validate_minutes(cls, value: int) -> int:
+        if value not in (5, 10, 30):
+            raise ValueError("minutes must be 5, 10, or 30")
+        return value
+
+
 class ReminderUpdate(BaseModel):
     task: Optional[str] = None
     datetime: Optional[datetime] = None

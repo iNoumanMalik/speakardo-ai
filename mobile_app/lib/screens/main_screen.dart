@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'chat_screen.dart';
 import 'profile_screen.dart';
 import 'reminders_screen.dart';
+import '../services/notification_action_handler.dart';
 import '../services/profile_provider.dart';
 import '../services/reminder_provider.dart';
 
@@ -15,6 +16,21 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    NotificationActionHandler.onRemindersChanged = () {
+      if (!mounted) return;
+      context.read<ReminderProvider>().fetchReminders();
+    };
+  }
+
+  @override
+  void dispose() {
+    NotificationActionHandler.onRemindersChanged = null;
+    super.dispose();
+  }
 
   final List<Widget> _screens = const [
     ChatScreen(),
