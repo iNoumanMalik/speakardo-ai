@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/reminder.dart';
 import '../utils/reminder_grouping.dart';
 
@@ -27,95 +28,216 @@ class ReminderCard extends StatelessWidget {
     final scheduleLabel = formatReminderSchedule(reminder, clock);
     final completed = reminder.isCompleted;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 1,
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (overdue)
-            Container(
-              width: 4,
-              color: theme.colorScheme.error,
-            ),
-          Padding(
-            padding: const EdgeInsets.only(left: 4, top: 8, bottom: 8),
-            child: _CompactIconButton(
-              icon: completed
-                  ? Icons.check_circle
-                  : Icons.radio_button_unchecked,
-              color: completed ? Colors.green : Colors.grey.shade600,
-              tooltip: completed ? 'Completed' : 'Mark complete',
-              onPressed: completed ? null : onComplete,
-            ),
+      decoration: BoxDecoration(
+        color: completed
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+            : overdue
+                ? theme.colorScheme.errorContainer.withValues(alpha: 0.08)
+                : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: completed
+              ? theme.colorScheme.outlineVariant.withValues(alpha: 0.2)
+              : overdue
+                  ? theme.colorScheme.error.withValues(alpha: 0.25)
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(0, 12, 4, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    reminder.displayTask,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      decoration:
-                          completed ? TextDecoration.lineThrough : null,
-                      color: completed
-                          ? theme.colorScheme.onSurface.withValues(alpha: 0.55)
-                          : theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    scheduleLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: overdue
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.onSurfaceVariant,
-                      fontWeight: overdue ? FontWeight.w600 : null,
-                    ),
-                  ),
-                  if (reminder.isRepeating) ...[
-                    const SizedBox(height: 6),
-                    _RepeatChip(label: reminder.repeatLabel ?? 'Repeats'),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 4, right: 4, bottom: 4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onEdit,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                _CompactIconButton(
-                  icon: Icons.edit_outlined,
-                  tooltip: 'Edit',
-                  onPressed: onEdit,
-                ),
-                if (onRepublish != null)
-                  _CompactIconButton(
-                    icon: Icons.notifications_active_outlined,
-                    tooltip: 'Republish',
-                    onPressed: onRepublish,
+                // Custom check button
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, right: 8),
+                  child: GestureDetector(
+                    onTap: completed
+                        ? null
+                        : () {
+                            HapticFeedback.lightImpact();
+                            onComplete();
+                          },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: completed
+                            ? const Color(0xFF10B981) // Emerald Green
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: completed
+                              ? const Color(0xFF10B981)
+                              : theme.colorScheme.outline.withValues(alpha: 0.6),
+                          width: 2.0,
+                        ),
+                      ),
+                      child: completed
+                          ? const Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            )
+                          : null,
+                    ),
                   ),
-                _CompactIconButton(
-                  icon: Icons.delete_outline,
-                  color: Colors.redAccent,
-                  tooltip: 'Delete',
-                  onPressed: onDelete,
+                ),
+                // Title and Schedule Information
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        reminder.displayTask,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          decoration:
+                              completed ? TextDecoration.lineThrough : null,
+                          color: completed
+                              ? theme.colorScheme.onSurface.withValues(alpha: 0.45)
+                              : theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 13,
+                            color: overdue
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              scheduleLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: overdue
+                                    ? theme.colorScheme.error
+                                    : theme.colorScheme.onSurfaceVariant,
+                                fontWeight: overdue ? FontWeight.w600 : null,
+                              ),
+                            ),
+                          ),
+                          if (overdue) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.errorContainer,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'OVERDUE',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onErrorContainer,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 8,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                        ],
+                      ),
+                      if (reminder.isRepeating) ...[
+                        const SizedBox(height: 6),
+                        _RepeatChip(label: reminder.repeatLabel ?? 'Repeats'),
+                      ],
+                    ],
+                  ),
+                ),
+                // Trailing 3-dot dropdown menu
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_horiz_rounded,
+                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                    ),
+                    tooltip: 'Actions',
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        onEdit();
+                      } else if (value == 'republish') {
+                        if (onRepublish != null) onRepublish!();
+                      } else if (value == 'delete') {
+                        onDelete();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18),
+                            SizedBox(width: 10),
+                            Text('Edit Reminder'),
+                          ],
+                        ),
+                      ),
+                      if (onRepublish != null)
+                        const PopupMenuItem<String>(
+                          value: 'republish',
+                          child: Row(
+                            children: [
+                              Icon(Icons.notifications_active_outlined, size: 18),
+                              SizedBox(width: 10),
+                              Text('Republish'),
+                            ],
+                          ),
+                        ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline_rounded,
+                              size: 18,
+                              color: Colors.redAccent,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.redAccent),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -152,40 +274,6 @@ class _RepeatChip extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Tight tap target for card actions (avoids ListTile trailing gaps).
-class _CompactIconButton extends StatelessWidget {
-  const _CompactIconButton({
-    required this.icon,
-    required this.tooltip,
-    this.onPressed,
-    this.color,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 36,
-      height: 36,
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 20, color: color),
-        tooltip: tooltip,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-        visualDensity: VisualDensity.compact,
-        style: IconButton.styleFrom(
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
       ),
     );
   }
