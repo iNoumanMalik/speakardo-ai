@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import 'device_service.dart';
+import 'notification_router.dart';
 import 'reminder_notification_service.dart';
 
 class FirebaseMessagingService {
@@ -28,17 +29,14 @@ class FirebaseMessagingService {
         await ReminderNotificationService.handleRemoteMessage(message);
       });
 
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) async {
-        final reminderId = message.data['reminder_id']?.toString();
-        if (reminderId == null) return;
-        await ReminderNotificationService.showReminderNotification(
-          reminderId: reminderId,
-          title: message.notification?.title ?? 'Reminder',
-          body: message.data['task']?.toString() ??
-              message.notification?.body ??
-              'You have a reminder',
-        );
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        NotificationRouter.handleFcmData(message.data);
       });
+
+      final initialMessage = await messaging.getInitialMessage();
+      if (initialMessage != null) {
+        NotificationRouter.handleFcmData(initialMessage.data);
+      }
     }
 
     final token = await messaging.getToken().timeout(

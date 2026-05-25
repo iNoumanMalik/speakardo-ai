@@ -155,6 +155,25 @@ String emptyMessageForFilter(ReminderListFilter filter) {
   }
 }
 
+/// Best filter tab to show [reminder] (used when opening from a notification).
+ReminderListFilter suggestedFilterFor(Reminder reminder, DateTime now) {
+  if (reminder.isCompleted) {
+    return ReminderListFilter.completed;
+  }
+  final bucket = bucketFor(reminder, now);
+  switch (bucket) {
+    case ReminderDateBucket.today:
+      return ReminderListFilter.today;
+    case ReminderDateBucket.tomorrow:
+      return ReminderListFilter.tomorrow;
+    case ReminderDateBucket.overdue:
+    case ReminderDateBucket.upcoming:
+      return ReminderListFilter.all;
+    case ReminderDateBucket.completed:
+      return ReminderListFilter.completed;
+  }
+}
+
 bool isReminderOverdue(Reminder reminder, DateTime now) {
   return !reminder.isCompleted && reminder.datetime.isBefore(now);
 }

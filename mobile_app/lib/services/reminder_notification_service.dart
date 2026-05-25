@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'notification_action_handler.dart';
 import 'notification_background.dart' show onBackgroundNotificationResponse;
+import 'notification_router.dart';
 
 /// Shows reminder alerts with Done / Snooze actions (local notifications).
 class ReminderNotificationService {
@@ -74,6 +75,14 @@ class ReminderNotificationService {
           onBackgroundNotificationResponse,
     );
 
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      final launchResponse = launchDetails?.notificationResponse;
+      if (launchResponse != null) {
+        await NotificationRouter.handleResponse(launchResponse);
+      }
+    }
+
     await _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
@@ -83,22 +92,19 @@ class ReminderNotificationService {
   }
 
   static void _onForegroundNotificationResponse(NotificationResponse response) {
-    unawaited(
-      NotificationActionHandler.processAction(
-        actionId: response.actionId,
-        reminderId: reminderIdFromPayload(response.payload),
-      ),
-    );
+    unawaited(NotificationRouter.handleResponse(response));
   }
 
+  /// Stable reminder id from JSON payload `{"reminder_id":"<uuid>"}`.
   static String? reminderIdFromPayload(String? payload) {
     if (payload == null || payload.isEmpty) return null;
     try {
       final decoded = jsonDecode(payload) as Map<String, dynamic>;
-      return decoded['reminder_id']?.toString();
-    } catch (_) {
-      return payload;
-    }
+      final id = decoded['reminder_id']?.toString().trim();
+      if (id != null && id.isNotEmpty) return id;
+    } catch (_) {}
+    final trimmed = payload.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   static int notificationIdFor(String reminderId) {

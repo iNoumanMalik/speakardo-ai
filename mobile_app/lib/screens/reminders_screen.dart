@@ -11,11 +11,13 @@ class RemindersScreen extends StatefulWidget {
   const RemindersScreen({super.key});
 
   @override
-  State<RemindersScreen> createState() => _RemindersScreenState();
+  State<RemindersScreen> createState() => RemindersScreenState();
 }
 
-class _RemindersScreenState extends State<RemindersScreen> {
+class RemindersScreenState extends State<RemindersScreen> {
   ReminderListFilter _filter = ReminderListFilter.all;
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _reminderKeys = {};
 
   void _showError(String message) {
     if (!mounted) return;
@@ -112,6 +114,48 @@ class _RemindersScreenState extends State<RemindersScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadReminders());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  GlobalKey _keyForReminder(String id) =>
+      _reminderKeys.putIfAbsent(id, () => GlobalKey());
+
+  void scrollToReminder(String reminderId) {
+    final provider = context.read<ReminderProvider>();
+    Reminder? reminder;
+    for (final r in provider.reminders) {
+      if (r.id == reminderId) {
+        reminder = r;
+        break;
+      }
+    }
+    if (reminder != null) {
+      final nextFilter = suggestedFilterFor(reminder, DateTime.now());
+      if (_filter != nextFilter) {
+        setState(() => _filter = nextFilter);
+      }
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final key = _reminderKeys[reminderId];
+      final ctx = key?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeInOut,
+          alignment: 0.15,
+        );
+      }
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) provider.clearHighlight();
+      });
+    });
   }
 
   Widget _buildFilterChips() {
@@ -211,9 +255,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
             );
           }
 
+          final highlightId = provider.highlightReminderId;
+
           return RefreshIndicator(
             onRefresh: _loadReminders,
             child: CustomScrollView(
+              controller: _scrollController,
               slivers: [
                 SliverToBoxAdapter(child: _buildFilterChips()),
                 for (final section in sections) ...[
@@ -224,15 +271,19 @@ class _RemindersScreenState extends State<RemindersScreen> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final reminder = section.reminders[index];
-                        return ReminderCard(
-                          reminder: reminder,
-                          clock: clock,
-                          onComplete: () => _completeReminder(reminder.id),
-                          onEdit: () => _editReminder(reminder),
-                          onRepublish: reminder.canRepublish
-                              ? () => _republishReminder(reminder)
-                              : null,
-                          onDelete: () => _deleteReminder(reminder.id),
+                        return KeyedSubtree(
+                          key: _keyForReminder(reminder.id),
+                          child: ReminderCard(
+                            reminder: reminder,
+                            clock: clock,
+                            highlighted: highlightId == reminder.id,
+                            onComplete: () => _completeReminder(reminder.id),
+                            onEdit: () => _editReminder(reminder),
+                            onRepublish: reminder.canRepublish
+                                ? () => _republishReminder(reminder)
+                                : null,
+                            onDelete: () => _deleteReminder(reminder.id),
+                          ),
                         );
                       },
                       childCount: section.reminders.length,

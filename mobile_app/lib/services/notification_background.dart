@@ -5,7 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import 'notification_action_handler.dart';
+import 'notification_router.dart';
 import 'reminder_notification_service.dart';
 
 /// FCM messages while app is in background/terminated.
@@ -28,10 +28,5 @@ Future<void> _handleBackgroundNotificationAction(
   NotificationResponse response,
 ) async {
   await ReminderNotificationService.ensureInitialized();
-  await NotificationActionHandler.processAction(
-    actionId: response.actionId,
-    reminderId: ReminderNotificationService.reminderIdFromPayload(
-      response.payload,
-    ),
-  );
+  await NotificationRouter.handleResponse(response);
 }

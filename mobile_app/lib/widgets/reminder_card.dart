@@ -10,6 +10,7 @@ class ReminderCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback? onRepublish;
   final VoidCallback onDelete;
+  final bool highlighted;
 
   const ReminderCard({
     super.key,
@@ -19,6 +20,7 @@ class ReminderCard extends StatelessWidget {
     required this.onEdit,
     this.onRepublish,
     required this.onDelete,
+    this.highlighted = false,
   });
 
   @override
@@ -38,17 +40,21 @@ class ReminderCard extends StatelessWidget {
                 : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: completed
-              ? theme.colorScheme.outlineVariant.withValues(alpha: 0.2)
-              : overdue
-                  ? theme.colorScheme.error.withValues(alpha: 0.25)
-                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
-          width: 1.0,
+          color: highlighted
+              ? theme.colorScheme.primary
+              : completed
+                  ? theme.colorScheme.outlineVariant.withValues(alpha: 0.2)
+                  : overdue
+                      ? theme.colorScheme.error.withValues(alpha: 0.25)
+                      : theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+          width: highlighted ? 2.0 : 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
+            color: highlighted
+                ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                : Colors.black.withValues(alpha: 0.03),
+            blurRadius: highlighted ? 12 : 8,
             offset: const Offset(0, 4),
           ),
         ],

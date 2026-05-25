@@ -22,9 +22,7 @@ class NotificationActionHandler {
     required String? reminderId,
   }) async {
     if (actionId == null || actionId.isEmpty) {
-      debugPrint(
-        'Notification tap ignored (no actionId). Open the app to manage reminders.',
-      );
+      debugPrint('NotificationActionHandler: actionId required');
       return;
     }
 

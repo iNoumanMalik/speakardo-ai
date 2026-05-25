@@ -4,6 +4,7 @@ import 'chat_screen.dart';
 import 'profile_screen.dart';
 import 'reminders_screen.dart';
 import '../services/notification_action_handler.dart';
+import '../services/notification_deep_link.dart';
 import '../services/profile_provider.dart';
 import '../services/reminder_provider.dart';
 
@@ -16,6 +17,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  final GlobalKey<RemindersScreenState> _remindersKey =
+      GlobalKey<RemindersScreenState>();
 
   @override
   void initState() {
@@ -24,19 +27,33 @@ class _MainScreenState extends State<MainScreen> {
       if (!mounted) return;
       context.read<ReminderProvider>().fetchReminders();
     };
+    NotificationDeepLink.onOpenReminder = _openReminderFromNotification;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationDeepLink.consumePending();
+    });
   }
 
   @override
   void dispose() {
     NotificationActionHandler.onRemindersChanged = null;
+    NotificationDeepLink.onOpenReminder = null;
     super.dispose();
   }
 
-  final List<Widget> _screens = const [
-    ChatScreen(),
-    RemindersScreen(),
-    ProfileScreen(),
-  ];
+  void _openReminderFromNotification(String reminderId) {
+    if (!mounted) return;
+    setState(() => _selectedIndex = 1);
+    context.read<ReminderProvider>().openReminderInList(reminderId).then((_) {
+      if (!mounted) return;
+      _remindersKey.currentState?.scrollToReminder(reminderId);
+    });
+  }
+
+  List<Widget> get _screens => [
+        const ChatScreen(),
+        RemindersScreen(key: _remindersKey),
+        const ProfileScreen(),
+      ];
 
   @override
   Widget build(BuildContext context) {

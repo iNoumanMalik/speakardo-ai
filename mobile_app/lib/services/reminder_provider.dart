@@ -9,6 +9,21 @@ class ReminderProvider with ChangeNotifier {
 
   List<Reminder> get reminders => _reminders;
   bool get isLoading => _isLoading;
+  String? get highlightReminderId => _highlightReminderId;
+
+  String? _highlightReminderId;
+
+  /// Load reminders and scroll/highlight [reminderId] in the list UI.
+  Future<void> openReminderInList(String reminderId) async {
+    _highlightReminderId = reminderId;
+    await fetchReminders();
+  }
+
+  void clearHighlight() {
+    if (_highlightReminderId == null) return;
+    _highlightReminderId = null;
+    notifyListeners();
+  }
 
   Future<void> fetchReminders() async {
     _isLoading = true;
