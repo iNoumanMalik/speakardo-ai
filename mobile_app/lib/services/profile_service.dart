@@ -19,6 +19,21 @@ class ProfileService {
     );
   }
 
+  Future<UserProfile> updateTimezone(String timezone) async {
+    final response = await AuthHttp.patchJson(
+      Uri.parse('$_baseUrl/users/me/timezone'),
+      {'timezone': timezone},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update timezone');
+    }
+
+    return UserProfile.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<UserProfile> updatePreferences({
     String? timezone,
     bool? notificationsEnabled,

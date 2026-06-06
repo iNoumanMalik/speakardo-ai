@@ -7,6 +7,7 @@ import 'profile_screen.dart';
 import 'reminders_screen.dart';
 import '../services/notification_action_handler.dart';
 import '../services/notification_deep_link.dart';
+import '../services/device_timezone_service.dart';
 import '../services/profile_provider.dart';
 import '../services/reminder_provider.dart';
 
@@ -37,7 +38,21 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_consumeNotificationDeepLink());
+      unawaited(_syncDeviceTimezone());
     });
+  }
+
+  Future<void> _syncDeviceTimezone() async {
+    if (!mounted) return;
+    final provider = context.read<ProfileProvider>();
+    await provider.fetchProfile();
+    if (!mounted) return;
+    final before = provider.profile?.timezone;
+    final updated = await DeviceTimezoneService.syncIfNeeded(before);
+    if (!mounted) return;
+    if (updated) {
+      await provider.fetchProfile();
+    }
   }
 
   Future<void> _consumeNotificationDeepLink() async {
@@ -61,6 +76,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_consumeNotificationDeepLink());
+      unawaited(_syncDeviceTimezone());
     }
   }
 

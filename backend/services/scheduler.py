@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import os
+from typing import Optional
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -8,8 +9,14 @@ from database import SessionLocal
 import models
 import logging
 from services.notifications import send_push_notification
+from services.local_schedule import (
+    delivery_dedupe_key_local,
+    is_reminder_due,
+    is_snooze_due,
+    local_now,
+)
 from services.reminder_state import reset_for_reschedule
-from services.repeat_schedule import next_occurrence_after, normalize_repeat
+from services.repeat_schedule import normalize_repeat
 
 logger = logging.getLogger(__name__)
 
@@ -73,12 +80,10 @@ def _recover_stale_processing(db: Session, now: datetime) -> int:
 
 
 def _claim_due_reminder(db: Session, reminder_id, now: datetime) -> bool:
-    stale_before = now - timedelta(seconds=PROCESSING_TIMEOUT_SECONDS)
     updated = (
         db.query(models.Reminder)
         .filter(
             models.Reminder.id == reminder_id,
-            models.Reminder.datetime <= now,
             models.Reminder.status == models.ReminderStatus.PENDING.value,
             or_(
                 models.Reminder.next_attempt_at.is_(None),
@@ -129,20 +134,23 @@ def _release_processing_to_pending(
 
 
 def _mark_triggered(
-    db: Session, reminder: models.Reminder, now: datetime
+    db: Session,
+    reminder: models.Reminder,
+    now: datetime,
+    *,
+    user_timezone: Optional[str] = None,
 ) -> None:
     if normalize_repeat(reminder.repeat):
-        next_dt = next_occurrence_after(reminder.repeat, reminder.datetime, after=now)
-        if next_dt is not None:
-            reset_for_reschedule(db, reminder)
-            reminder.datetime = next_dt
-            logger.info(
-                "event=repeat_rescheduled reminder_id=%s rule=%s next_datetime=%s",
-                reminder.id,
-                reminder.repeat,
-                next_dt,
-            )
-            return
+        reset_for_reschedule(db, reminder)
+        reminder.snoozed_until = None
+        reminder.datetime = now
+        logger.info(
+            "event=repeat_local_fired reminder_id=%s local_time=%s user_tz=%s",
+            reminder.id,
+            reminder.local_time,
+            user_timezone,
+        )
+        return
 
     reminder.status = models.ReminderStatus.TRIGGERED.value
     reminder.triggered_at = now
@@ -157,25 +165,59 @@ def _mark_triggered(
     )
 
 
-def _process_reminder(db: Session, reminder: models.Reminder, now: datetime) -> None:
+def _dedupe_key_for_fire(
+    reminder: models.Reminder,
+    device_id,
+    now: datetime,
+    user_timezone: Optional[str],
+) -> str:
+    if normalize_repeat(reminder.repeat):
+        if is_snooze_due(reminder.snoozed_until, now) and reminder.snoozed_until:
+            return delivery_dedupe_key(
+                reminder.id, device_id, reminder.snoozed_until
+            )
+        local = local_now(now, user_timezone)
+        return delivery_dedupe_key_local(
+            reminder.id,
+            device_id,
+            local.date().isoformat(),
+            reminder.local_time or "00:00",
+        )
     scheduled_at = reminder.datetime
     if scheduled_at.tzinfo is None:
         scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
     else:
         scheduled_at = scheduled_at.astimezone(timezone.utc)
+    return delivery_dedupe_key(reminder.id, device_id, scheduled_at)
 
-    if scheduled_at > now:
-        logger.warning(
-            "Reminder_id=%s not yet due (scheduled_at=%s now=%s) — releasing claim",
-            reminder.id,
-            scheduled_at,
-            now,
-        )
-        reminder.status = models.ReminderStatus.PENDING.value
-        reminder.processing_started_at = None
-        return
+
+def _process_reminder(
+    db: Session,
+    reminder: models.Reminder,
+    now: datetime,
+    *,
+    user_timezone: Optional[str] = None,
+) -> None:
+    is_repeating = bool(normalize_repeat(reminder.repeat))
+    if not is_repeating:
+        scheduled_at = reminder.datetime
+        if scheduled_at.tzinfo is None:
+            scheduled_at = scheduled_at.replace(tzinfo=timezone.utc)
+        else:
+            scheduled_at = scheduled_at.astimezone(timezone.utc)
+        if scheduled_at > now:
+            logger.warning(
+                "Reminder_id=%s not yet due (scheduled_at=%s now=%s) — releasing claim",
+                reminder.id,
+                scheduled_at,
+                now,
+            )
+            reminder.status = models.ReminderStatus.PENDING.value
+            reminder.processing_started_at = None
+            return
 
     user = db.query(models.User).filter(models.User.id == reminder.user_id).first()
+    tz = user_timezone or (user.timezone if user else "UTC")
 
     if user and not user.notifications_enabled:
         logger.info(
@@ -183,7 +225,7 @@ def _process_reminder(db: Session, reminder: models.Reminder, now: datetime) -> 
             reminder.id,
             reminder.user_id,
         )
-        _mark_triggered(db, reminder, now)
+        _mark_triggered(db, reminder, now, user_timezone=tz)
         return
 
     device_tokens = (
@@ -220,7 +262,7 @@ def _process_reminder(db: Session, reminder: models.Reminder, now: datetime) -> 
     sends_attempted = 0
 
     for device in device_tokens:
-        dedupe_key = delivery_dedupe_key(reminder.id, device.id, scheduled_at)
+        dedupe_key = _dedupe_key_for_fire(reminder, device.id, now, tz)
         existing = (
             db.query(models.DeliveryAttempt)
             .filter(models.DeliveryAttempt.dedupe_key == dedupe_key)
@@ -239,11 +281,12 @@ def _process_reminder(db: Session, reminder: models.Reminder, now: datetime) -> 
 
         sends_attempted += 1
         logger.info(
-            "Reminder_id=%s sending push scheduled_at=%s device_token_id=%s dedupe_key=%s",
+            "Reminder_id=%s sending push dedupe_key=%s device_token_id=%s local_time=%s user_tz=%s",
             reminder.id,
-            scheduled_at,
-            device.id,
             dedupe_key,
+            device.id,
+            reminder.local_time,
+            tz,
         )
         result = send_push_notification(
             device_token=device.token,
@@ -283,7 +326,6 @@ def _process_reminder(db: Session, reminder: models.Reminder, now: datetime) -> 
         if result.invalid_token:
             db.delete(device)
 
-    # Concurrency safe: verify status is still PROCESSING and has not been snoozed/completed.
     db_state = (
         db.query(models.Reminder.status, models.Reminder.processing_started_at)
         .filter(models.Reminder.id == reminder.id)
@@ -302,14 +344,13 @@ def _process_reminder(db: Session, reminder: models.Reminder, now: datetime) -> 
     reminder.attempt_count = (reminder.attempt_count or 0) + 1
 
     if delivered:
-        _mark_triggered(db, reminder, now)
+        _mark_triggered(db, reminder, now, user_timezone=tz)
         return
 
     if sends_attempted == 0 and device_tokens:
         logger.warning(
-            "Reminder_id=%s no sends for scheduled_at=%s — treating as delivery failure",
+            "Reminder_id=%s no sends — treating as delivery failure",
             reminder.id,
-            scheduled_at,
         )
 
     _release_processing_to_pending(
@@ -329,11 +370,9 @@ async def check_due_reminders():
         if recovered:
             logger.info("Stale processing recovery complete count=%s", recovered)
 
-        # Only PENDING reminders are due; PROCESSING rows are handled via recovery.
-        due_reminders = (
+        pending_reminders = (
             db.query(models.Reminder)
             .filter(
-                models.Reminder.datetime <= now,
                 models.Reminder.status == models.ReminderStatus.PENDING.value,
                 or_(
                     models.Reminder.next_attempt_at.is_(None),
@@ -343,9 +382,34 @@ async def check_due_reminders():
             .all()
         )
 
-        logger.debug("Scheduler tick at %s found %d due reminder(s)", now, len(due_reminders))
+        user_tz_cache: dict = {}
+        due_reminders = []
+        for reminder in pending_reminders:
+            uid = reminder.user_id
+            if uid not in user_tz_cache:
+                user = db.query(models.User.timezone).filter(models.User.id == uid).first()
+                user_tz_cache[uid] = user[0] if user else "UTC"
+            user_tz = user_tz_cache[uid]
+            if is_reminder_due(
+                repeat=reminder.repeat,
+                datetime_utc=reminder.datetime,
+                local_time=reminder.local_time,
+                local_weekday=reminder.local_weekday,
+                local_day_of_month=reminder.local_day_of_month,
+                snoozed_until=reminder.snoozed_until,
+                user_tz=user_tz,
+                now_utc=now,
+            ):
+                due_reminders.append((reminder, user_tz))
 
-        for reminder in due_reminders:
+        logger.debug(
+            "Scheduler tick at %s found %d due reminder(s) of %d pending",
+            now,
+            len(due_reminders),
+            len(pending_reminders),
+        )
+
+        for reminder, user_tz in due_reminders:
             reminder_id = reminder.id
             try:
                 logger.info(
@@ -368,7 +432,7 @@ async def check_due_reminders():
                     reminder.processing_started_at,
                 )
 
-                _process_reminder(db, reminder, now)
+                _process_reminder(db, reminder, now, user_timezone=user_tz)
                 db.commit()
                 logger.info(
                     "Processing finished reminder_id=%s final_status=%s triggered_at=%s",

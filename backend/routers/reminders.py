@@ -10,12 +10,9 @@ from database import get_db
 from deps import get_current_user
 import models
 import schemas
+from services.local_schedule import apply_local_schedule_to_reminder
 from services.reminder_state import clear_delivery_history, reset_for_reschedule
-from services.repeat_schedule import (
-    next_occurrence_after,
-    normalize_repeat,
-    repeat_label,
-)
+from services.repeat_schedule import normalize_repeat, repeat_label
 
 logger = logging.getLogger(__name__)
 
@@ -25,20 +22,18 @@ router = APIRouter()
 def _reschedule_repeating_reminder(
     db: Session, reminder: models.Reminder, now: datetime
 ) -> bool:
-    """Advance a repeating reminder to its next occurrence. Returns True if rescheduled."""
+    """User completed a repeating reminder — stay on local wall-clock schedule."""
     if not normalize_repeat(reminder.repeat):
         return False
-    next_dt = next_occurrence_after(reminder.repeat, reminder.datetime, after=now)
-    if next_dt is None:
-        return False
     cleared = reset_for_reschedule(db, reminder)
-    reminder.datetime = next_dt
+    reminder.snoozed_until = None
+    reminder.datetime = now
     logger.info(
-        "event=repeat_rescheduled reminder_id=%s rule=%s next_datetime=%s "
+        "event=repeat_advanced_local reminder_id=%s rule=%s local_time=%s "
         "cleared_delivery_attempts=%s",
         reminder.id,
         reminder.repeat,
-        next_dt,
+        reminder.local_time,
         cleared,
     )
     return True
@@ -57,6 +52,7 @@ def create_reminder(
         user_id=current_user.id,
         status=models.ReminderStatus.PENDING.value,
     )
+    apply_local_schedule_to_reminder(db_reminder, current_user.timezone)
     db.add(db_reminder)
     db.commit()
     db.refresh(db_reminder)
@@ -133,6 +129,10 @@ def update_reminder(
         db_reminder.datetime = body.datetime
     if body.repeat is not None:
         db_reminder.repeat = normalize_repeat(body.repeat)
+    if body.datetime is not None or body.repeat is not None:
+        apply_local_schedule_to_reminder(db_reminder, current_user.timezone)
+        if rescheduled:
+            db_reminder.snoozed_until = None
     cleared = 0
     if rescheduled:
         cleared = reset_for_reschedule(db, db_reminder)
@@ -177,12 +177,14 @@ def republish_reminder(
                 detail="Scheduled time must be in the future",
             )
         db_reminder.datetime = body.datetime
-    elif db_reminder.datetime <= now:
+    elif db_reminder.datetime <= now and not normalize_repeat(db_reminder.repeat):
         raise HTTPException(
             status_code=400,
             detail="Reminder time is in the past. Set a new date and time to republish.",
         )
 
+    apply_local_schedule_to_reminder(db_reminder, current_user.timezone)
+    db_reminder.snoozed_until = None
     cleared = reset_for_reschedule(db, db_reminder)
     db.commit()
     db.refresh(db_reminder)
@@ -248,10 +250,13 @@ def snooze_reminder(
     now = datetime.now(timezone.utc)
     previous_status = db_reminder.status
     previous_datetime = db_reminder.datetime
-    new_datetime = now + timedelta(minutes=body.minutes)
+    new_snooze_until = now + timedelta(minutes=body.minutes)
 
     cleared = clear_delivery_history(db, reminder_id)
-    db_reminder.datetime = new_datetime
+    if normalize_repeat(db_reminder.repeat):
+        db_reminder.snoozed_until = new_snooze_until
+    else:
+        db_reminder.datetime = new_snooze_until
     db_reminder.status = models.ReminderStatus.PENDING.value
     db_reminder.triggered_at = None
     db_reminder.processing_started_at = None
@@ -269,7 +274,7 @@ def snooze_reminder(
         body.minutes,
         previous_status,
         previous_datetime,
-        new_datetime,
+        new_snooze_until,
         cleared,
     )
     return db_reminder

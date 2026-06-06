@@ -20,6 +20,27 @@ def get_current_user_profile(
     return current_user
 
 
+@router.patch("/me/timezone", response_model=schemas.UserProfileResponse)
+def update_user_timezone(
+    body: schemas.UserTimezoneUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Update timezone from device detection (e.g. after travel)."""
+    if current_user.timezone == body.timezone:
+        return current_user
+    current_user.timezone = body.timezone
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    logger.info(
+        "event=user_timezone_updated user_id=%s timezone=%s",
+        current_user.id,
+        current_user.timezone,
+    )
+    return current_user
+
+
 @router.patch("/me/preferences", response_model=schemas.UserProfileResponse)
 def update_user_preferences(
     body: schemas.UserPreferencesUpdate,

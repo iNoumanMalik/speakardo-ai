@@ -177,6 +177,22 @@ class FeedbackResponse(BaseModel):
     message: str
 
 
+class UserTimezoneUpdate(BaseModel):
+    timezone: str = Field(min_length=1, max_length=64)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Timezone cannot be empty")
+        try:
+            ZoneInfo(cleaned)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError("Invalid timezone") from exc
+        return cleaned
+
+
 class UserPreferencesUpdate(BaseModel):
     timezone: Optional[str] = None
     notifications_enabled: Optional[bool] = None
