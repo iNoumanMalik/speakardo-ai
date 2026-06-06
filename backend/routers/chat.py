@@ -96,6 +96,7 @@ async def process_chat(
         body.message,
         pending_context=body.pending_context,
         recent_reminders=recent,
+        user_timezone=current_user.timezone,
     )
 
     if not parsed:
@@ -108,11 +109,12 @@ async def process_chat(
 
     intent = parsed.get("intent") or "create"
     logger.info(
-        "event=chat_parse_result user_id=%s intent=%s needs_time=%s needs_clarification=%s",
+        "event=chat_parse_result user_id=%s intent=%s needs_time=%s needs_clarification=%s parser_layer=%s",
         current_user.id,
         intent,
         parsed.get("needs_time"),
         parsed.get("needs_clarification"),
+        parsed.get("_parser_layer"),
     )
     eid = parsed.get("editable_reminder_id")
 

@@ -17,3 +17,5 @@ bcrypt>=4.0
 python-jose[cryptography]
 slowapi
 email-validator
+dateparser>=1.2.0
+parsedatetime>=2.6
