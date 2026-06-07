@@ -248,27 +248,28 @@ class _ChatScreenState extends State<ChatScreen>
       appBar: AppBar(
         title: const Text('Ethereal AI Reminder'),
         elevation: 1,
-        actions: [
-          Consumer<ChatProvider>(
-            builder: (context, chatProvider, _) {
-              return IconButton(
-                tooltip: chatProvider.voiceFeedbackEnabled
-                    ? 'Voice feedback on'
-                    : 'Voice feedback off',
-                icon: Icon(
-                  chatProvider.voiceFeedbackEnabled
-                      ? Icons.volume_up
-                      : Icons.volume_off,
-                ),
-                onPressed: () {
-                  chatProvider.setVoiceFeedbackEnabled(
-                    !chatProvider.voiceFeedbackEnabled,
-                  );
-                },
-              );
-            },
-          ),
-        ],
+        // Voice feedback toggle (speaker icon) — TTS disabled.
+        // actions: [
+        //   Consumer<ChatProvider>(
+        //     builder: (context, chatProvider, _) {
+        //       return IconButton(
+        //         tooltip: chatProvider.voiceFeedbackEnabled
+        //             ? 'Voice feedback on'
+        //             : 'Voice feedback off',
+        //         icon: Icon(
+        //           chatProvider.voiceFeedbackEnabled
+        //               ? Icons.volume_up
+        //               : Icons.volume_off,
+        //         ),
+        //         onPressed: () {
+        //           chatProvider.setVoiceFeedbackEnabled(
+        //             !chatProvider.voiceFeedbackEnabled,
+        //           );
+        //         },
+        //       );
+        //     },
+        //   ),
+        // ],
       ),
       body: SafeArea(
         child: Column(
