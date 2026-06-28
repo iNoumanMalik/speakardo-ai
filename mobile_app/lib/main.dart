@@ -7,6 +7,7 @@ import 'services/notification_background.dart';
 import 'services/notification_deep_link.dart';
 import 'services/reminder_notification_service.dart';
 import 'package:timezone/data/latest_all.dart';
+import 'widgets/app_chrome.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -116,7 +117,7 @@ class AiReminderApp extends StatelessWidget {
       title: 'AI Reminder App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6750A4)),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppChrome.primary),
         useMaterial3: true,
       ),
       home: const _AuthGate(),

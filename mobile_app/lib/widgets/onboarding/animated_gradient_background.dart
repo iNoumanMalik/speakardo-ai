@@ -11,9 +11,9 @@ class AnimatedGradientBackground extends StatefulWidget {
     super.key,
     required this.child,
     this.colors = const [
-      Color(0xFF6750A4),
-      Color(0xFF9A82DB),
-      Color(0xFFE8DEF8),
+      Color(0xFF4F46E5),
+      Color(0xFF6366F1),
+      Color(0xFF818CF8),
     ],
   });
 
@@ -85,7 +85,7 @@ class _OrbPainter extends CustomPainter {
     final wave = math.sin(progress * math.pi * 2);
 
     orb(w * 0.15, h * 0.2 + wave * 24, 90, Colors.white);
-    orb(w * 0.85, h * 0.35 - wave * 20, 110, const Color(0xFFD0BCFF));
+    orb(w * 0.85, h * 0.35 - wave * 20, 110, const Color(0xFF2DD4BF));
     orb(w * 0.5, h * 0.75 + wave * 16, 130, Colors.white);
   }
 

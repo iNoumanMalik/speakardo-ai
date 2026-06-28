@@ -5,6 +5,7 @@ import '../services/onboarding_permissions.dart';
 import '../services/onboarding_storage.dart';
 import '../widgets/onboarding/animated_gradient_background.dart';
 import '../widgets/onboarding/onboarding_illustrations.dart';
+import '../widgets/app_chrome.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onFinished;
@@ -158,7 +159,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             : () => _requestPermission(page.permissionType!),
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF6750A4),
+                          foregroundColor: AppChrome.primary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -170,7 +171,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 width: 22,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: Color(0xFF6750A4),
+                                  color: AppChrome.primary,
                                 ),
                               )
                             : Text(_permissionButtonLabel(page.permissionType!)),
@@ -193,7 +194,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         onPressed: _nextPage,
                         style: FilledButton.styleFrom(
                           backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF6750A4),
+                          foregroundColor: AppChrome.primary,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),

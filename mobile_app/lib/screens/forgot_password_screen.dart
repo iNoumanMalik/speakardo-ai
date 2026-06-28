@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../widgets/app_chrome.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -45,52 +46,78 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Forgot password')),
-      body: SafeArea(
-        child: Center(
+    return SpeakardoScaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Forgot password',
+          style: TextStyle(
+            color: AppChrome.ink,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppChrome.ink),
+      ),
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
+            child: GlassPanel(
+              borderRadius: 28,
+              padding: const EdgeInsets.all(28),
               child: _sent
                   ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.mark_email_read_outlined,
-                          size: 56,
-                          color: Theme.of(context).colorScheme.primary,
+                          size: 64,
+                          color: AppChrome.primary,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
+                        const SizedBox(height: 20),
+                        const Text(
                           'Check your email',
-                          style: Theme.of(context).textTheme.titleLarge,
+                          style: TextStyle(
+                            color: AppChrome.ink,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 12),
-                        Text(
+                        const Text(
                           'If an account exists for that address, we sent reset '
                           'instructions. The link expires in 2 hours.',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: TextStyle(
+                            color: AppChrome.muted,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
                         FilledButton(
                           onPressed: () => Navigator.pop(context),
+                          style: AppChrome.primaryButtonStyle(),
                           child: const Text('Back to sign in'),
                         ),
                       ],
                     )
                   : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
+                        const Text(
                           'Enter the email for your account. We will send a '
                           'link to reset your password.',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: TextStyle(
+                            color: AppChrome.ink,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
                         ),
                         const SizedBox(height: 20),
                         TextField(
@@ -98,9 +125,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           keyboardType: TextInputType.emailAddress,
                           autocorrect: false,
                           enabled: !_busy,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            border: OutlineInputBorder(),
+                          decoration: AppChrome.inputDecoration(
+                            label: 'Email',
+                            prefixIcon: const Icon(Icons.email_outlined, color: AppChrome.muted),
                           ),
                         ),
                         if (_error != null) ...[
@@ -109,18 +136,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             _error!,
                             style: TextStyle(
                               color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                         const SizedBox(height: 20),
                         FilledButton(
                           onPressed: _busy ? null : _submit,
+                          style: AppChrome.primaryButtonStyle(),
                           child: _busy
                               ? const SizedBox(
                                   height: 22,
                                   width: 22,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
+                                    color: Colors.white,
                                   ),
                                 )
                               : const Text('Send reset link'),

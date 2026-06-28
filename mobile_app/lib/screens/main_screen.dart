@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'chat_screen.dart';
+import 'memory_screen.dart';
+import 'mic_screen.dart';
 import 'profile_screen.dart';
 import 'reminders_screen.dart';
 import '../services/notification_action_handler.dart';
@@ -10,6 +12,7 @@ import '../services/notification_deep_link.dart';
 import '../services/device_timezone_service.dart';
 import '../services/profile_provider.dart';
 import '../services/reminder_provider.dart';
+import '../widgets/app_chrome.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -99,6 +102,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   List<Widget> get _screens => [
         const ChatScreen(),
         RemindersScreen(key: _remindersKey),
+        const MicScreen(),
+        const MemoryScreen(),
         const ProfileScreen(),
       ];
 
@@ -109,9 +114,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         index: _selectedIndex,
         children: _screens,
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: RevampedBottomNav(
         currentIndex: _selectedIndex,
-        type: BottomNavigationBarType.fixed,
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
@@ -119,28 +123,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
           if (index == 1) {
             context.read<ReminderProvider>().fetchReminders();
-          } else if (index == 2) {
+          } else if (index == 4) {
             context.read<ProfileProvider>().fetchProfile();
           }
         },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
-            label: 'Chat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt_outlined),
-            activeIcon: Icon(Icons.list_alt),
-            label: 'Reminders',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-        selectedItemColor: const Color(0xFF6750A4),
       ),
     );
   }

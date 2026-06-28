@@ -4,6 +4,7 @@ import '../models/message.dart';
 import '../services/chat_provider.dart';
 import '../services/reminder_provider.dart';
 import '../utils/repeat_options.dart';
+import 'app_chrome.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -27,43 +28,93 @@ class MessageBubble extends StatelessWidget {
         children: [
           Align(
             alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              decoration: BoxDecoration(
-                color: isUser ? const Color(0xFF6750A4) : Colors.grey[200],
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: isUser ? const Radius.circular(20) : const Radius.circular(0),
-                  bottomRight: isUser ? const Radius.circular(0) : const Radius.circular(20),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (!isUser) ...[
+                  const AppLogoMark(size: 32),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isUser
+                          ? AppChrome.primary
+                          : Colors.white.withValues(alpha: 0.82),
+                      border: Border.all(
+                        color: isUser
+                            ? AppChrome.primary
+                            : Colors.white.withValues(alpha: 0.85),
+                      ),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(24),
+                        topRight: const Radius.circular(24),
+                        bottomLeft:
+                            isUser ? const Radius.circular(24) : const Radius.circular(5),
+                        bottomRight:
+                            isUser ? const Radius.circular(5) : const Radius.circular(24),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 17,
+                      vertical: 14,
+                    ),
+                    child: Text(
+                      message.text,
+                      style: TextStyle(
+                        color: isUser ? Colors.white : AppChrome.ink,
+                        fontSize: 15.5,
+                        height: 1.35,
+                        fontWeight: isUser ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: isUser ? Colors.white : Colors.black87,
-                  fontSize: 16,
-                ),
-              ),
+              ],
             ),
           ),
           if (showConfirm) ...[
             if (_pendingSummary(pending) != null)
               Padding(
-                padding: const EdgeInsets.only(top: 6, left: 4),
-                child: Text(
-                  _pendingSummary(pending)!,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade700,
+                padding: const EdgeInsets.only(top: 8, left: 42),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppChrome.accent.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: AppChrome.accent.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  child: Text(
+                    _pendingSummary(pending)!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppChrome.ink,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+              padding: const EdgeInsets.only(top: 10.0, left: 42.0),
               child: Row(
                 children: [
-                  ElevatedButton(
+                  FilledButton.icon(
                     onPressed: () async {
                       final ok = await context
                           .read<ChatProvider>()
@@ -76,14 +127,9 @@ class MessageBubble extends StatelessWidget {
                         } catch (_) {}
                       }
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6750A4),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                    ),
-                    child: Text(isEdit ? 'Yes, update' : 'Yes, remind me'),
+                    style: AppChrome.primaryButtonStyle(),
+                    icon: const Icon(Icons.check_circle_rounded, size: 18),
+                    label: Text(isEdit ? 'Yes, update' : 'Yes, remind me'),
                   ),
                   const SizedBox(width: 8),
                   TextButton(
@@ -112,4 +158,3 @@ class MessageBubble extends StatelessWidget {
     return '$task — $date $time$repeatPart';
   }
 }
-

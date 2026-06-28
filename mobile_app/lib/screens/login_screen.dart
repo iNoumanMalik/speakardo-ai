@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_provider.dart';
+import '../widgets/app_chrome.dart';
 import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -81,20 +82,28 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final showGoogle = !kIsWeb;
 
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
+    return SpeakardoScaffold(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
+            child: GlassPanel(
+              borderRadius: 28,
+              padding: const EdgeInsets.all(28),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Center(child: AppLogoMark(size: 60)),
+                  const SizedBox(height: 20),
                   Text(
                     _registerMode ? 'Create account' : 'Sign in',
-                    style: Theme.of(context).textTheme.headlineSmall,
+                    style: const TextStyle(
+                      color: AppChrome.ink,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -105,20 +114,29 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: const Text('Continue with Google'),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
+                        side: const BorderSide(color: AppChrome.line),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        foregroundColor: AppChrome.ink,
                       ),
                     ),
                     const SizedBox(height: 20),
                     Row(
-                      children: [
-                        const Expanded(child: Divider()),
+                      children: const [
+                        Expanded(child: Divider(color: AppChrome.line)),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             'or',
-                            style: Theme.of(context).textTheme.bodySmall,
+                            style: TextStyle(
+                              color: AppChrome.muted,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        const Expanded(child: Divider()),
+                        Expanded(child: Divider(color: AppChrome.line)),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -128,9 +146,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     keyboardType: TextInputType.emailAddress,
                     autocorrect: false,
                     enabled: !_busy,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
+                    decoration: AppChrome.inputDecoration(
+                      label: 'Email',
+                      prefixIcon: const Icon(Icons.email_outlined, color: AppChrome.muted),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -138,9 +156,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _password,
                     obscureText: true,
                     enabled: !_busy,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      border: const OutlineInputBorder(),
+                    decoration: AppChrome.inputDecoration(
+                      label: 'Password',
+                      prefixIcon: const Icon(Icons.lock_outlined, color: AppChrome.muted),
                       helperText: _registerMode
                           ? 'At least 8 characters'
                           : null,
@@ -160,7 +178,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 );
                               },
-                        child: const Text('Forgot password?'),
+                        child: const Text(
+                          'Forgot password?',
+                          style: TextStyle(
+                            color: AppChrome.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -170,20 +194,27 @@ class _LoginScreenState extends State<LoginScreen> {
                       _error!,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.w600,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                   const SizedBox(height: 20),
                   FilledButton(
                     onPressed: _busy ? null : _submit,
+                    style: AppChrome.primaryButtonStyle(),
                     child: _busy
                         ? const SizedBox(
                             height: 22,
                             width: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : Text(_registerMode ? 'Register' : 'Sign in'),
                   ),
+                  const SizedBox(height: 8),
                   TextButton(
                     onPressed: _busy
                         ? null
@@ -195,6 +226,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       _registerMode
                           ? 'Already have an account? Sign in'
                           : 'Need an account? Register',
+                      style: const TextStyle(
+                        color: AppChrome.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],

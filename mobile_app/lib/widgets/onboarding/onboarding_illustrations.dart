@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../app_chrome.dart';
 
 enum OnboardingIllustrationKind { welcome, chat, notifications, voice }
 
@@ -73,7 +74,7 @@ class _OnboardingIllustrationState extends State<OnboardingIllustration>
         return _iconCluster(
           primary: Icons.alarm_rounded,
           secondary: Icons.auto_awesome,
-          ringColor: const Color(0xFFE8DEF8),
+          ringColor: AppChrome.primary.withValues(alpha: 0.22),
         );
       case OnboardingIllustrationKind.chat:
         return _chatBubbles();
@@ -81,7 +82,7 @@ class _OnboardingIllustrationState extends State<OnboardingIllustration>
         return _iconCluster(
           primary: Icons.notifications_active_rounded,
           secondary: Icons.schedule_rounded,
-          ringColor: const Color(0xFFD0BCFF),
+          ringColor: AppChrome.accent.withValues(alpha: 0.22),
         );
       case OnboardingIllustrationKind.voice:
         return _voiceWaves();
@@ -115,13 +116,13 @@ class _OnboardingIllustrationState extends State<OnboardingIllustration>
               color: Colors.white.withValues(alpha: 0.92),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF6750A4).withValues(alpha: 0.25),
+                  color: AppChrome.primary.withValues(alpha: 0.25),
                   blurRadius: 28,
                   offset: const Offset(0, 12),
                 ),
               ],
             ),
-            child: Icon(primary, size: 72, color: const Color(0xFF6750A4)),
+            child: Icon(primary, size: 72, color: AppChrome.primary),
           ),
           Positioned(
             right: 18,
@@ -129,7 +130,7 @@ class _OnboardingIllustrationState extends State<OnboardingIllustration>
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF6750A4),
+                color: AppChrome.primary,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(secondary, color: Colors.white, size: 26),
@@ -181,7 +182,7 @@ class _OnboardingIllustrationState extends State<OnboardingIllustration>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: alignEnd
-              ? const Color(0xFF6750A4)
+              ? AppChrome.primary
               : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
@@ -241,7 +242,7 @@ class _OnboardingIllustrationState extends State<OnboardingIllustration>
                   color: Colors.white.withValues(alpha: 0.95),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6750A4).withValues(alpha: 0.3),
+                      color: AppChrome.primary.withValues(alpha: 0.3),
                       blurRadius: 24,
                     ),
                   ],
@@ -249,7 +250,7 @@ class _OnboardingIllustrationState extends State<OnboardingIllustration>
                 child: const Icon(
                   Icons.mic_rounded,
                   size: 52,
-                  color: Color(0xFF6750A4),
+                  color: AppChrome.primary,
                 ),
               ),
             ],

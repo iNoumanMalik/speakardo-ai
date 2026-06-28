@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'dart:ui' as ui;
 import '../services/chat_provider.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/app_chrome.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -244,137 +245,228 @@ class _ChatScreenState extends State<ChatScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ethereal AI Reminder'),
-        elevation: 1,
-        // Voice feedback toggle (speaker icon) — TTS disabled.
-        // actions: [
-        //   Consumer<ChatProvider>(
-        //     builder: (context, chatProvider, _) {
-        //       return IconButton(
-        //         tooltip: chatProvider.voiceFeedbackEnabled
-        //             ? 'Voice feedback on'
-        //             : 'Voice feedback off',
-        //         icon: Icon(
-        //           chatProvider.voiceFeedbackEnabled
-        //               ? Icons.volume_up
-        //               : Icons.volume_off,
-        //         ),
-        //         onPressed: () {
-        //           chatProvider.setVoiceFeedbackEnabled(
-        //             !chatProvider.voiceFeedbackEnabled,
-        //           );
-        //         },
-        //       );
-        //     },
-        //   ),
-        // ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Consumer<ChatProvider>(
-                builder: (context, chatProvider, child) {
-                  return ListView.builder(
-                    reverse: true,
-                    itemCount: chatProvider.messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = chatProvider.messages[index];
-                      return MessageBubble(
-                        message: msg,
-                      );
-                    },
-                  );
-                },
+    return SpeakardoScaffold(
+      child: Column(
+        children: [
+          SpeakardoTopBar(
+            title: 'Speakardo',
+            subtitle: _isListening ? 'Listening' : 'Active',
+            trailing: IconButton.filledTonal(
+              onPressed: () {},
+              tooltip: 'Menu',
+              icon: const Icon(Icons.menu_rounded),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white.withValues(alpha: 0.7),
+                foregroundColor: AppChrome.muted,
               ),
             ),
-            Consumer<ChatProvider>(
-              builder: (context, chatProvider, child) {
-                if (chatProvider.isLoading) {
-                  return const Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: LinearProgressIndicator(),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-            if (_isListening)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  'Listening...',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.red,
-                  ),
-                ),
-              ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                boxShadow: [
-                  BoxShadow(
-                    offset: const Offset(0, -1),
-                    blurRadius: 5,
-                    color: Colors.black.withOpacity(0.05),
-                  ),
-                ],
-              ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: GlassPanel(
+              borderRadius: 20,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  GestureDetector(
-                    onTap: _listen,
-                    child: AnimatedBuilder(
-                      animation: _pulseAnimation ?? const AlwaysStoppedAnimation<double>(1.0),
-                      builder: (context, child) {
-                        final scale = _isListening ? (_pulseAnimation?.value ?? 1.0) : 1.0;
-                        return Transform.scale(scale: scale, child: child);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: _isListening
-                              ? Colors.red.withValues(alpha: 0.15)
-                              : Colors.transparent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _isListening ? Icons.mic : Icons.mic_none,
-                          color: _isListening ? Colors.red : const Color(0xFF6750A4),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      decoration: InputDecoration(
-                        hintText: 'Type or speak a reminder...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25.0),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      ),
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
+                  const Icon(
+                    Icons.calendar_today_rounded,
+                    size: 16,
+                    color: AppChrome.accent,
                   ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: _sendMessage,
-                    child: CircleAvatar(
-                      backgroundColor: const Color(0xFF6750A4),
-                      child: const Icon(Icons.send, color: Colors.white),
+                  Text(
+                    '${_weekdayLabel(DateTime.now())} • Focus Mode',
+                    style: const TextStyle(
+                      color: AppChrome.muted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Consumer<ChatProvider>(
+              builder: (context, chatProvider, child) {
+                if (chatProvider.messages.isEmpty) {
+                  return const _ChatEmptyState();
+                }
+                return ListView.builder(
+                  reverse: true,
+                  padding: const EdgeInsets.fromLTRB(4, 8, 4, 12),
+                  itemCount: chatProvider.messages.length,
+                  itemBuilder: (context, index) {
+                    final msg = chatProvider.messages[index];
+                    return MessageBubble(message: msg);
+                  },
+                );
+              },
+            ),
+          ),
+          Consumer<ChatProvider>(
+            builder: (context, chatProvider, child) {
+              if (chatProvider.isLoading) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: const LinearProgressIndicator(minHeight: 3),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 104),
+            child: Column(
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: const [
+                      _QuickActionChip(
+                        icon: Icons.add_circle_outline_rounded,
+                        label: 'New Reminder',
+                      ),
+                      _QuickActionChip(
+                        icon: Icons.calendar_month_outlined,
+                        label: 'View Timeline',
+                      ),
+                      _QuickActionChip(
+                        icon: Icons.psychology_alt_outlined,
+                        label: 'Memory Core',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                GlassPanel(
+                  borderRadius: 30,
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {},
+                        tooltip: 'Attach',
+                        icon: const Icon(Icons.attach_file_rounded),
+                        color: AppChrome.muted,
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _textController,
+                          decoration: const InputDecoration(
+                            hintText: 'Speak or type to Speakardo...',
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 12,
+                            ),
+                          ),
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      AnimatedBuilder(
+                        animation: _pulseAnimation ??
+                            const AlwaysStoppedAnimation<double>(1.0),
+                        builder: (context, child) {
+                          final scale = _isListening
+                              ? (_pulseAnimation?.value ?? 1.0)
+                              : 1.0;
+                          return Transform.scale(scale: scale, child: child);
+                        },
+                        child: IconButton.filled(
+                          onPressed: _listen,
+                          tooltip: _isListening ? 'Stop listening' : 'Speak',
+                          icon: Icon(
+                            _isListening
+                                ? Icons.stop_rounded
+                                : Icons.mic_rounded,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor:
+                                _isListening ? Colors.redAccent : AppChrome.primary,
+                            foregroundColor: Colors.white,
+                            fixedSize: const Size(50, 50),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton.filledTonal(
+                        onPressed: _sendMessage,
+                        tooltip: 'Send',
+                        icon: const Icon(Icons.send_rounded),
+                        style: IconButton.styleFrom(
+                          backgroundColor:
+                              AppChrome.primary.withValues(alpha: 0.1),
+                          foregroundColor: AppChrome.primary,
+                          fixedSize: const Size(46, 46),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_isListening)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Listening...',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _weekdayLabel(DateTime date) {
+    const names = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return names[date.weekday - 1];
+  }
+}
+
+class _QuickActionChip extends StatelessWidget {
+  const _QuickActionChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GlassPanel(
+        borderRadius: 22,
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: AppChrome.primary),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppChrome.ink,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ],
@@ -384,4 +476,40 @@ class _ChatScreenState extends State<ChatScreen>
   }
 }
 
+class _ChatEmptyState extends StatelessWidget {
+  const _ChatEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: GlassPanel(
+          borderRadius: 28,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              AppLogoMark(size: 54),
+              SizedBox(height: 16),
+              Text(
+                'Good morning',
+                style: TextStyle(
+                  color: AppChrome.ink,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Tell me what you need to remember. I can turn natural language into reminders.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppChrome.muted, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
