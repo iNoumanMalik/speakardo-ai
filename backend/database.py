@@ -1,9 +1,8 @@
+import env_config  # noqa: F401 — load repository root .env before reading os.environ
+
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
-
-load_dotenv()
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 # We default to sqlite locally for ease of testing since Docker isn't available
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ai_reminder.db")

@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
@@ -16,7 +16,7 @@ from auth_security import (
     require_jwt_secret,
     verify_password,
 )
-from database import get_db
+from database import SessionLocal, get_db
 from deps import get_current_user
 from rate_limit import limiter
 from services.auth_mailer import send_password_reset_email, send_verification_email
@@ -58,11 +58,34 @@ def _mark_email_verified(user: models.User, db: Session) -> None:
     logger.info("event=email_verified user_id=%s", user.id)
 
 
+def _send_verification_email_background(user_id: UUID) -> None:
+    db = SessionLocal()
+    try:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user is None:
+            return
+        send_verification_email(db, user)
+    finally:
+        db.close()
+
+
+def _send_password_reset_email_background(user_id: UUID) -> None:
+    db = SessionLocal()
+    try:
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user is None:
+            return
+        send_password_reset_email(db, user)
+    finally:
+        db.close()
+
+
 @router.post("/register", response_model=schemas.TokenResponse)
 @limiter.limit("20/minute")
 def register(
     request: Request,
     body: schemas.UserRegisterRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     _ = request
@@ -86,7 +109,7 @@ def register(
     db.add(user)
     db.commit()
     db.refresh(user)
-    send_verification_email(db, user)
+    background_tasks.add_task(_send_verification_email_background, user.id)
     return _issue_tokens(user)
 
 
@@ -237,13 +260,14 @@ def refresh_tokens(
 def forgot_password(
     request: Request,
     body: schemas.ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     _ = request
     email = body.email.strip().lower()
     user = db.query(models.User).filter(models.User.email == email).first()
     if user is not None and user.password is not None:
-        send_password_reset_email(db, user)
+        background_tasks.add_task(_send_password_reset_email_background, user.id)
     return schemas.MessageResponse(message=_GENERIC_RESET_MSG)
 
 
@@ -376,6 +400,7 @@ def verify_email_confirm(token: str, db: Session = Depends(get_db)):
 @limiter.limit("5/minute")
 def resend_verification(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
@@ -387,11 +412,7 @@ def resend_verification(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Google accounts are already verified via Google.",
         )
-    if not send_verification_email(db, current_user):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Could not send verification email. Try again later.",
-        )
+    background_tasks.add_task(_send_verification_email_background, current_user.id)
     return schemas.MessageResponse(
         message="Verification email sent. Check your inbox."
     )

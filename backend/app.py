@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import logging
 import os
 
-from dotenv import load_dotenv
+import env_config  # noqa: F401 — load repository root .env
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -21,8 +21,8 @@ import routers.reminders
 import routers.users
 from rate_limit import limiter
 from services.scheduler import start_scheduler
+from services.email_service import smtp_config_status
 
-load_dotenv()
 configure_logging()
 logger = logging.getLogger(__name__)
 app_env = os.getenv("APP_ENV", "development").strip().lower()
@@ -40,6 +40,14 @@ if app_env in {"development", "dev"} and auto_create_schema:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("event=app_startup env=%s auto_create_schema=%s", app_env, auto_create_schema)
+    email_status = smtp_config_status()
+    logger.info(
+        "event=email_config mode=%s host=%s from=%s timeout_s=%s",
+        email_status["mode"],
+        email_status["host"],
+        email_status["from"],
+        email_status["timeout_seconds"],
+    )
     db = SessionLocal()
     try:
         enforce_owned_entities(db)

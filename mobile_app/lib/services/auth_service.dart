@@ -72,6 +72,9 @@ class AuthService {
     if (response.statusCode == 429) {
       return 'Too many attempts. Try again in a minute.';
     }
+    if (response.statusCode == 408) {
+      return 'Request timed out. Please check your connection and try again.';
+    }
     return _errorMessage(response);
   }
 
@@ -96,6 +99,9 @@ class AuthService {
     }
     if (response.statusCode == 429) {
       return 'Too many attempts. Try again in a minute.';
+    }
+    if (response.statusCode == 408) {
+      return 'Request timed out. Please check your connection and try again.';
     }
     return _errorMessage(response);
   }
@@ -146,6 +152,9 @@ class AuthService {
     if (response.statusCode == 429) {
       return 'Too many attempts. Try again in a minute.';
     }
+    if (response.statusCode == 408) {
+      return 'Request timed out. Please check your connection and try again.';
+    }
     return _errorMessage(response);
   }
 
@@ -170,6 +179,9 @@ class AuthService {
     if (response.statusCode == 429) {
       return 'Too many attempts. Try again in a minute.';
     }
+    if (response.statusCode == 408) {
+      return 'Request timed out. Please check your connection and try again.';
+    }
     return _errorMessage(response);
   }
 
@@ -191,6 +203,9 @@ class AuthService {
     if (response.statusCode == 400) {
       return 'This verification link is invalid or expired.';
     }
+    if (response.statusCode == 408) {
+      return 'Request timed out. Please check your connection and try again.';
+    }
     return _errorMessage(response);
   }
 
@@ -208,6 +223,9 @@ class AuthService {
     }
     if (response.statusCode == 429) {
       return 'Too many requests. Wait a minute and try again.';
+    }
+    if (response.statusCode == 408) {
+      return 'Request timed out. Please check your connection and try again.';
     }
     if (response.statusCode == 503) {
       return 'Email is not configured on the server.';
@@ -227,6 +245,9 @@ class AuthService {
   }
 
   static String? _errorMessage(http.Response response) {
+    if (response.statusCode == 408) {
+      return 'Request timed out. Please check your connection and try again.';
+    }
     try {
       final map = jsonDecode(response.body);
       if (map is Map && map['detail'] != null) {

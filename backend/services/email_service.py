@@ -12,10 +12,42 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+def _smtp_from() -> str:
+    return os.getenv("SMTP_FROM", "").strip() or os.getenv("SMTP_USER", "").strip()
+
+
+def _smtp_use_tls() -> bool:
+    return os.getenv("SMTP_USE_TLS", "true").strip().lower() != "false"
+
+
+def _smtp_timeout() -> int:
+    raw = os.getenv("SMTP_TIMEOUT_SECONDS", "10").strip()
+    try:
+        return max(3, int(raw))
+    except ValueError:
+        return 10
+
+
 def _smtp_configured() -> bool:
     host = os.getenv("SMTP_HOST", "").strip()
-    from_addr = os.getenv("SMTP_FROM", "").strip()
-    return bool(host and from_addr)
+    return bool(host and _smtp_from())
+
+
+def smtp_config_status() -> dict[str, object]:
+    host = os.getenv("SMTP_HOST", "").strip()
+    from_addr = _smtp_from()
+    configured = bool(host and from_addr)
+    return {
+        "configured": configured,
+        "host": host or None,
+        "port": int(os.getenv("SMTP_PORT", "587")),
+        "from": from_addr or None,
+        "has_user": bool(os.getenv("SMTP_USER", "").strip()),
+        "has_password": bool(os.getenv("SMTP_PASSWORD", "")),
+        "use_tls": _smtp_use_tls(),
+        "timeout_seconds": _smtp_timeout(),
+        "mode": "smtp" if configured else "dev_log_only",
+    }
 
 
 def public_app_url() -> str:
@@ -54,8 +86,9 @@ def send_email(
     port = int(os.getenv("SMTP_PORT", "587"))
     user = os.getenv("SMTP_USER", "").strip()
     password = os.getenv("SMTP_PASSWORD", "")
-    from_addr = os.getenv("SMTP_FROM", "").strip()
-    use_tls = os.getenv("SMTP_USE_TLS", "true").strip().lower() != "false"
+    from_addr = _smtp_from()
+    use_tls = _smtp_use_tls()
+    timeout = _smtp_timeout()
 
     message = MIMEMultipart("alternative")
     message["Subject"] = subject
@@ -66,7 +99,7 @@ def send_email(
         message.attach(MIMEText(html_body, "html", "utf-8"))
 
     try:
-        with smtplib.SMTP(host, port, timeout=30) as server:
+        with smtplib.SMTP(host, port, timeout=timeout) as server:
             if use_tls:
                 server.starttls()
             if user:

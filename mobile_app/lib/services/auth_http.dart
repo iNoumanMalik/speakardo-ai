@@ -50,12 +50,18 @@ class AuthHttp {
     Future<http.Response> Function(Map<String, String> headers) send,
   ) async {
     var headers = await _jsonHeaders();
-    var response = await send(headers);
+    var response = await send(headers).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () => http.Response('', 408),
+    );
     if (response.statusCode == 401) {
       final ok = await AuthService.tryRefresh();
       if (ok) {
         headers = await _jsonHeaders();
-        response = await send(headers);
+        response = await send(headers).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () => http.Response('', 408),
+        );
       } else {
         onSessionExpired?.call();
       }
