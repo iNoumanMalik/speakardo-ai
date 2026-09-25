@@ -1,12 +1,27 @@
 # **Speakardo Product Roadmap & Milestones** 
 
-Version: 1.0 
+Version: 1.1 
 
 Product: Speakardo 
 
 Timeline: 0 → 10 Years 
 
 Status: Strategic Roadmap 
+
+## Revision 1.1 (2026-09-25): Build Order Change
+
+Modules 1–4 (Auth, AI Chat, Reminders, Notifications) are complete. The build order after them is now: 
+
+1. AI Memory System (Phase 6 below, SRS Module 8), next, split into 8.0–8.4, then 8B Habits. Design: `docs/Project/Speakardo Module 8 - AI Memory System Design.md` 
+2. Calendar Intelligence (Phase 7) 
+3. Voice Assistant (Phase 3) 
+4. Shared Reminders (Phase 4) and Team Workspaces (Phase 5), moved later 
+
+Reason: memory is the retention engine and the core differentiator. Shared and team features work best once people already rely on the app daily. 
+
+Also added: conversational chat (not just reminder parsing), Roman Urdu / Urdu input, and memory-seeding questions during onboarding. 
+
+Location-based reminders and geofences are a separate module, after 8B. 
 
 # **Product Evolution Vision** 
 

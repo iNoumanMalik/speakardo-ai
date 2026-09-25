@@ -2,13 +2,22 @@
 
 # **(SRS)** 
 
-Version: 1.0 
+Version: 1.1 
 
 Product: Speakardo 
 
 Category: AI Life Assistant 
 
 Status: Living Technical Document 
+
+## Revision History
+
+| Version | Date | Changes |
+| --- | --- | --- |
+| 1.0 | 2026-06 | Initial SRS |
+| 1.1 | 2026-09-25 | Module 2 expanded into a conversational assistant; Module 8 (AI Memory) fully specified with a separate design doc; Memories data model and Memory API expanded; roadmap order changed (Memory before Shared Reminders and Teams) |
+
+Detailed design for Module 8: `docs/Project/Speakardo Module 8 - AI Memory System Design.md` 
 
 # **1. Introduction** 
 
@@ -177,6 +186,23 @@ Providers:
 - Claude 
 
 Used when confidence is low. 
+
+## **Conversational Assistant (added in v1.1)** 
+
+Chat is not only a reminder parser. Every message goes through a Turn Router that classifies intent: 
+
+- reminder_create / reminder_edit 
+- memory_save / memory_query / memory_forget / memory_list 
+- chat (general conversation) 
+
+Requirements: 
+
+- Rules first; otherwise one combined LLM call returns intent, reminder slots and memory candidates as strict JSON. 
+- Chat messages are stored server-side (`conversation_messages`) with user-controlled retention (default 90 days). 
+- The app loads history via GET /chat/history. 
+- Replies use relevant memories; the assistant says "I don't have that saved" instead of guessing. 
+- The greeting is personal (uses the user's name when known), not "AI Reminder assistant". 
+- Input in English, Roman Urdu and Urdu is supported. 
 
 # **Module 3: Reminder Management** 
 
@@ -394,33 +420,71 @@ Future multilingual support
 
 # **Module 8: AI Memory System** 
 
-## **Personal Memory** 
+Full design: `docs/Project/Speakardo Module 8 - AI Memory System Design.md` 
 
-Store: 
+## **Goal** 
 
-Important dates 
+Speakardo remembers what users tell it, answers questions from that memory, and uses it to set better reminders, while the user can always see, edit and delete what is kept. 
 
-Preferences 
+Product promise: "Don't tell Speakardo when. Tell Speakardo what matters." 
 
-Relationships 
+## **Memory Kinds** 
 
-Health information 
+- fact: "My office is in Blue Area" 
+- preference: "Don't remind me before 8 AM" 
+- important_date: "My mother's birthday is June 10" 
+- relationship: "Sara is my sister" (linked to a People record with aliases, e.g. Mom / Ammi / my mother) 
+- note: personal notes 
+- event: life events ("I moved to Lahore") 
+- habit: learned from app activity (Module 8B, separate table) 
 
-Personal notes 
+## **Every Memory Has** 
 
-Life events 
+Source, confidence, importance, sensitivity (normal / private / sensitive), status, validity dates (for temporary facts), and version history. 
 
-### **Examples** 
+## **Save Policy** 
 
-"My mother's birthday is June 10." 
-
-"I prefer meetings after 10 AM." 
+- Explicit request or clearly stated lasting fact (not sensitive): save immediately, show "Saved · Undo" in chat. 
+- Same key as an existing memory: replace it, keep the old one in history, show "Updated". 
+- Temporary fact: save with an end date. 
+- Sensitive fact stated explicitly: ask first; save only with opt-in; encrypted; no embedding. 
+- Sensitive fact only implied: never save. 
+- Unclear or guessed: do not save. 
+- Instructions disguised as memories are never followed. 
 
 ## **Memory Retrieval** 
 
-"What did I tell you about my mother?" 
+- Exact lookup first (person/alias + key), then semantic search (pgvector), plus an always-included profile. 
+- Ranking: score = 0.55 similarity + 0.20 importance + 0.15 confidence + 0.10 recency (recency fixed at 1.0 for lasting facts). 
+- Budget: 8 to 12 memories, about 800 tokens per call. 
+- Questions search memories and reminders together. 
 
-"When is my next dentist appointment?" 
+### **Examples** 
+
+"My mother's birthday is June 10." → saved + offer yearly reminder 
+
+"I prefer meetings after 10 AM." → saved as preference 
+
+"What did I tell you about my mother?" → answered from memory 
+
+"When is my next dentist appointment?" → answered from reminders 
+
+"Remind me to call Ammi on her birthday." → resolves person and date from memory 
+
+## **User Controls** 
+
+View, explain source, edit, forget one, forget a category, forget everything, pause learning, export (JSON). Available in chat and in the Memory screen. 
+
+## **Privacy Requirements** 
+
+- LLM calls that include memories or chat history go only to allowlisted providers that do not train on or retain API data. 
+- Sensitive memories are encrypted at the application level. 
+- Deleted memories are hard-deleted within 24 hours, including embeddings and old versions. 
+- Memory content is never written to logs. 
+
+## **Milestones** 
+
+8.0 Foundations → 8.1 Talk and remember → 8.2 Memory screen and privacy → 8.3 People and dates → 8.4 Background learning → 8B Habits 
 
 # **Module 9: Calendar Integration** 
 
@@ -606,17 +670,65 @@ opened_at
 
 Fields: 
 
-id 
+id, user_id 
 
-user_id 
+kind (fact, preference, important_date, relationship, note, event) 
 
-memory_type 
+category (personal, work, people, health, finance, places, routine, other) 
+
+key (normalised slot, e.g. birthday) 
+
+person_id (nullable, FK People) 
 
 content 
 
-importance_score 
+value (jsonb) 
 
-created_at 
+source (user_explicit, conversation, reminder, onboarding, manual_edit, behavior) 
+
+source_message_id 
+
+confidence 
+
+importance 
+
+sensitivity (normal, private, sensitive) 
+
+status (active, pending_confirmation, superseded, deleted) 
+
+superseded_by 
+
+valid_from, valid_until 
+
+embedding (vector 1536, null for sensitive) 
+
+use_count, last_used_at 
+
+created_at, updated_at 
+
+## **People** 
+
+Fields: 
+
+id, user_id, display_name, relationship, aliases, notes, created_at 
+
+## **ConversationMessages** 
+
+Fields: 
+
+id, user_id, session_id, role, content, intent, created_at 
+
+## **MemoryEvents** (audit trail) 
+
+Fields: 
+
+id, memory_id, user_id, action, actor, detail, created_at 
+
+## **MemorySettings** 
+
+Fields: 
+
+memory_enabled, learn_from_chat, sensitive_memory_opt_in, chat_retention_days 
 
 ## **Teams** 
 
@@ -716,11 +828,39 @@ POST /teams/invite
 
 Memory 
 
+GET /memory (filters: kind, category, person_id, q) 
+
+GET /memory/{id} 
+
 POST /memory 
 
-GET /memory 
+PATCH /memory/{id} 
+
+POST /memory/{id}/confirm 
+
+POST /memory/{id}/reject 
 
 DELETE /memory/{id} 
+
+DELETE /memory?category={category} 
+
+POST /memory/delete-all 
+
+GET /memory/export 
+
+GET /memory/settings 
+
+PATCH /memory/settings 
+
+People 
+
+GET /people 
+
+POST /people 
+
+PATCH /people/{id} 
+
+DELETE /people/{id} 
 
 Devices 
 
