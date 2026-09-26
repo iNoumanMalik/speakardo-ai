@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_provider.dart';
 import '../services/feedback_service.dart';
 import '../services/profile_provider.dart';
+import '../utils/chat_retention_options.dart';
 import '../widgets/app_chrome.dart';
 import 'verify_email_otp_screen.dart';
 // Timezone UI hidden (Option A). Kept for future use:
@@ -190,6 +191,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickChatRetention(ProfileProvider provider) async {
+    final current = provider.chatRetentionDays;
+    final selected = await showModalBottomSheet<ChatRetentionOption>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 0, 24, 4),
+              child: Text(
+                'Keep chat history',
+                style: TextStyle(
+                  color: AppChrome.ink,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(
+                'Older messages are deleted automatically.',
+                style: TextStyle(color: AppChrome.muted),
+              ),
+            ),
+            for (final option in kChatRetentionOptions)
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                title: Text(option.label),
+                trailing: option.days == current
+                    ? const Icon(Icons.check_rounded, color: AppChrome.primary)
+                    : null,
+                onTap: () => Navigator.of(sheetContext).pop(option),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || selected.days == current) return;
+    final ok = await provider.setChatRetentionDays(selected.days);
+    if (!mounted) return;
+    if (!ok) {
+      _showError('Could not update chat history setting.');
+    }
+  }
+
   // Timezone picker hidden (Option A — device local time for reminders).
   // Kept for when profile timezone is wired end-to-end.
   /*
@@ -356,30 +407,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
               GlassPanel(
                 borderRadius: 24,
                 padding: EdgeInsets.zero,
-                child: SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.notifications_outlined, color: AppChrome.primary),
-                  title: const Text(
-                    'Push notifications',
-                    style: TextStyle(
-                      color: AppChrome.ink,
-                      fontWeight: FontWeight.w700,
+                child: Column(
+                  children: [
+                    SwitchListTile.adaptive(
+                      secondary: const Icon(Icons.notifications_outlined, color: AppChrome.primary),
+                      title: const Text(
+                        'Push notifications',
+                        style: TextStyle(
+                          color: AppChrome.ink,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Receive alerts when reminders are due',
+                        style: TextStyle(color: AppChrome.muted),
+                      ),
+                      value: profile.notificationsEnabled,
+                      onChanged: provider.isSaving
+                          ? null
+                          : (value) async {
+                              final ok =
+                                  await provider.setNotificationsEnabled(value);
+                              if (!mounted) return;
+                              if (!ok) {
+                                _showError('Could not update notification setting.');
+                              }
+                            },
                     ),
-                  ),
-                  subtitle: const Text(
-                    'Receive alerts when reminders are due',
-                    style: TextStyle(color: AppChrome.muted),
-                  ),
-                  value: profile.notificationsEnabled,
-                  onChanged: provider.isSaving
-                      ? null
-                      : (value) async {
-                          final ok =
-                              await provider.setNotificationsEnabled(value);
-                          if (!mounted) return;
-                          if (!ok) {
-                            _showError('Could not update notification setting.');
-                          }
-                        },
+                    const Divider(
+                      height: 1,
+                      indent: 56,
+                      endIndent: 16,
+                      color: AppChrome.line,
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.history_rounded, color: AppChrome.primary),
+                      title: const Text(
+                        'Chat history',
+                        style: TextStyle(
+                          color: AppChrome.ink,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: Text(
+                        chatRetentionLabel(profile.chatRetentionDays),
+                        style: const TextStyle(color: AppChrome.muted),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppChrome.muted,
+                      ),
+                      onTap: provider.isSaving
+                          ? null
+                          : () => _pickChatRetention(provider),
+                    ),
+                  ],
                 ),
               ),
               // --- Timezone (hidden — Option A uses device local time) ---

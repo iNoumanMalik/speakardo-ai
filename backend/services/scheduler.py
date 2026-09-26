@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 import models
 import logging
+from services.chat_history import purge_expired_messages
 from services.notifications import send_push_notification
 from services.local_schedule import (
     delivery_dedupe_key_local,
@@ -24,6 +25,9 @@ logger = logging.getLogger(__name__)
 SCHEDULER_INTERVAL_SECONDS = int(os.getenv("SCHEDULER_INTERVAL_SECONDS", "30"))
 MAX_DELIVERY_ATTEMPTS = int(os.getenv("MAX_DELIVERY_ATTEMPTS", "5"))
 PROCESSING_TIMEOUT_SECONDS = int(os.getenv("PROCESSING_TIMEOUT_SECONDS", "120"))
+CHAT_PURGE_INTERVAL_HOURS = 24
+# First cleanup shortly after startup: dev machines are rarely up at a fixed night hour.
+CHAT_PURGE_FIRST_RUN_DELAY = timedelta(minutes=5)
 
 
 def _utcnow() -> datetime:
@@ -517,12 +521,36 @@ async def check_due_reminders():
         db.close()
 
 
+async def purge_expired_chat_history() -> int:
+    """Daily job: delete chat messages older than each user's retention setting."""
+    db = SessionLocal()
+    try:
+        deleted = purge_expired_messages(db, _utcnow())
+        db.commit()
+        logger.info("event=chat_history_purged deleted=%s", deleted)
+        return deleted
+    except Exception:
+        db.rollback()
+        logger.exception("event=chat_history_purge_failed")
+        return 0
+    finally:
+        db.close()
+
+
 def start_scheduler():
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
         check_due_reminders,
         "interval",
         seconds=SCHEDULER_INTERVAL_SECONDS,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        purge_expired_chat_history,
+        "interval",
+        hours=CHAT_PURGE_INTERVAL_HOURS,
+        next_run_time=_utcnow() + CHAT_PURGE_FIRST_RUN_DELAY,
         max_instances=1,
         coalesce=True,
     )

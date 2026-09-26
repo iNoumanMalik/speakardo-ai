@@ -41,6 +41,11 @@ class ChatRole:
     ASSISTANT = "assistant"
 
 
+# Days of chat history a user can choose to keep; NULL on the user means forever.
+CHAT_RETENTION_CHOICES = (30, 90, 365)
+DEFAULT_CHAT_RETENTION_DAYS = 90
+
+
 class ReminderEventType:
     CREATED = "created"
     FIRED = "fired"
@@ -64,6 +69,13 @@ class User(Base):
     timezone = Column(String, nullable=False, default="UTC", server_default="UTC")
     notifications_enabled = Column(
         Boolean, nullable=False, default=True, server_default="true"
+    )
+    # Chat history older than this is deleted daily; NULL keeps it forever.
+    chat_retention_days = Column(
+        Integer,
+        nullable=True,
+        default=DEFAULT_CHAT_RETENTION_DAYS,
+        server_default=str(DEFAULT_CHAT_RETENTION_DAYS),
     )
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 

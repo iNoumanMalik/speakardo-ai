@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, text
 from sqlalchemy.orm import Session
 
 import models
@@ -96,3 +96,28 @@ def list_history(
     rows = query.order_by(msg.created_at.desc(), msg.id.desc()).limit(limit + 1).all()
     has_more = len(rows) > limit
     return rows[:limit], has_more
+
+
+_PURGE_SQL = """
+DELETE FROM conversation_messages m
+USING users u
+WHERE m.user_id = u.id
+  AND u.chat_retention_days IS NOT NULL
+  AND m.created_at < :now - make_interval(days => u.chat_retention_days)
+"""
+
+
+def purge_expired_messages(
+    db: Session, now: datetime, *, user_id: Optional[UUID] = None
+) -> int:
+    """Delete messages older than each user's retention (NULL = keep forever).
+
+    Scoped to one user when ``user_id`` is given. The caller commits.
+    """
+    sql = _PURGE_SQL
+    params: dict = {"now": now}
+    if user_id is not None:
+        sql += "  AND u.id = :user_id\n"
+        params["user_id"] = user_id
+    result = db.execute(text(sql), params)
+    return result.rowcount or 0

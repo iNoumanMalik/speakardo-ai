@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 DateTime = datetime
 from uuid import UUID
 from typing import Any, Optional
-from models import ReminderStatus
+from models import CHAT_RETENTION_CHOICES, ReminderStatus
 
 
 class UserRegisterRequest(BaseModel):
@@ -183,6 +183,8 @@ class UserProfileResponse(BaseModel):
     email_verified: bool
     timezone: str
     notifications_enabled: bool
+    # Days of chat history kept; null means forever.
+    chat_retention_days: Optional[int] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -215,6 +217,18 @@ class UserTimezoneUpdate(BaseModel):
 class UserPreferencesUpdate(BaseModel):
     timezone: Optional[str] = None
     notifications_enabled: Optional[bool] = None
+    # 30, 90 or 365 days; an explicit null keeps chat history forever. Leaving the
+    # field out changes nothing (the router checks model_fields_set).
+    chat_retention_days: Optional[int] = None
+
+    @field_validator("chat_retention_days")
+    @classmethod
+    def validate_chat_retention_days(cls, value: Optional[int]) -> Optional[int]:
+        if value is not None and value not in CHAT_RETENTION_CHOICES:
+            raise ValueError(
+                f"chat_retention_days must be one of {list(CHAT_RETENTION_CHOICES)} or null"
+            )
+        return value
 
     @field_validator("timezone")
     @classmethod

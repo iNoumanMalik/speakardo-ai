@@ -19,7 +19,7 @@ Modules 1–4 (Auth, AI Chat, Reminders, Notifications) are complete. The build 
 
 Reason: memory is the retention engine and the core differentiator. Shared and team features work best once people already rely on the app daily. 
 
-Also added: conversational chat (not just reminder parsing), Roman Urdu / Urdu input, and memory-seeding questions during onboarding. 
+Also added: conversational chat (not just reminder parsing), Roman Urdu / Urdu input (a language milestone after Module 8.3), and memory-seeding questions during onboarding. 
 
 Location-based reminders and geofences are a separate module, after 8B. 
 

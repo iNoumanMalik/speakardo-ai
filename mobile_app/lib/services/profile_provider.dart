@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 
 import '../models/user_profile.dart';
+import '../utils/chat_retention_options.dart';
 import 'profile_service.dart';
 
 class ProfileProvider with ChangeNotifier {
@@ -25,6 +26,8 @@ class ProfileProvider with ChangeNotifier {
 
   String get timezone => _profile?.timezone ?? 'UTC';
   bool get notificationsEnabled => _profile?.notificationsEnabled ?? true;
+  int? get chatRetentionDays =>
+      _profile == null ? kDefaultChatRetentionDays : _profile!.chatRetentionDays;
 
   Future<void> fetchProfile() async {
     _isLoading = true;
@@ -48,6 +51,25 @@ class ProfileProvider with ChangeNotifier {
 
   Future<bool> setTimezone(String timezone) async {
     return _savePreferences(timezone: timezone);
+  }
+
+  /// [days] is 30, 90 or 365, or `null` to keep chat history forever.
+  Future<bool> setChatRetentionDays(int? days) async {
+    _isSaving = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _profile = await _profileService.updateChatRetention(days);
+      return true;
+    } catch (e) {
+      _error = 'Could not save chat history setting';
+      debugPrint('Chat retention save error: $e');
+      return false;
+    } finally {
+      _isSaving = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> useDeviceTimezone() async {

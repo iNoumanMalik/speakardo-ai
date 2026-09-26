@@ -50,7 +50,7 @@ The five principles that drive every decision below:
 | Memories table | 6 fields | ~20 fields (section 6) | Needed for updates, forgetting, explaining sources |
 | Memory API | POST/GET/DELETE /memory | Edit, search, delete by category, delete all, export, settings (section 10) | Expected by users and app stores |
 | Onboarding | Personalisation screen | 3 quick questions that seed first memories | Personal replies in the first session |
-| Language | English | Accept Roman Urdu and Urdu ("kal subah 9 baje yaad dilana") | Large underserved market; LLM already handles it, rule parser needs patterns |
+| Language | English | Accept Roman Urdu and Urdu ("kal subah 9 baje yaad dilana") in a language milestone after 8.3; Module 8 ships English-only | Large underserved market; LLM already handles it, rule parser needs patterns |
 | Memory screen | Placeholder data and an unproven "encrypted" claim | Real data only; claims only when true | Fake data breaks trust immediately |
 
 ---
@@ -145,9 +145,9 @@ Indexes: `(user_id, status)`, `(user_id, person_id)`, `(user_id, key)`, ivfflat 
 ### 6.2 Other tables
 
 - **`people`**: `id, user_id, display_name, relationship, aliases text[], notes, created_at`; unique `(user_id, lower(display_name))`.
-- **`conversation_messages`**: `id, user_id, session_id, role, content, intent, created_at`; retention default 90 days, user-configurable.
+- **`conversation_messages`**: `id, user_id, session_id, role, content, intent, created_at`; retention default 90 days, user-configurable (30 days / 90 days / 1 year / forever) via `users.chat_retention_days` (null = forever). A scheduler job deletes expired messages every 24 hours; shortening the setting deletes that user's expired messages immediately.
 - **`memory_events`** (audit): `id, memory_id, user_id, action (created|updated|used|confirmed|rejected|deleted), actor (user|system), detail jsonb, created_at`.
-- **`memory_settings`** (or columns on `users`): `memory_enabled`, `learn_from_chat`, `sensitive_memory_opt_in`, `chat_retention_days`.
+- **Memory settings** — columns on `users`, next to `timezone` and `notifications_enabled`: `chat_retention_days` (from 8.0), then `memory_enabled`, `learn_from_chat` (8.1) and `sensitive_memory_opt_in` (8.2). Read and written through `PATCH /users/me/preferences` until `/memory/settings` arrives in 8.2.
 - **`reminder_events`** (from 8.0): `id, reminder_id, user_id, event (created|fired|snoozed|completed|dismissed|edited|deleted), scheduled_for, occurred_at, local_time, weekday`. Raw log that 8B habit mining depends on — start collecting now, because patterns need weeks of history.
   - `reminder_id` has **no foreign key**, so the log outlives deleted reminders; rows go with the user (`ON DELETE CASCADE` on `user_id`).
   - `scheduled_for` is the fire time the event is about; `local_time` (`HH:MM`) and `weekday` (0 = Mon) are `occurred_at` in the user's timezone.
@@ -180,7 +180,7 @@ Each message costs at most one LLM call to understand and one to reply; many cos
 | Clearly stated lasting fact, not sensitive | Save now, "Saved · Undo" | "My sister Sara's birthday is June 15" |
 | Same key as existing memory | Supersede old (kept in history), "Updated: X (was Y)" | "I moved to Lahore" |
 | Temporary fact | Save with `valid_until` | "I'm in Karachi this week" → 7 days |
-| Sensitive, explicit | Ask first; save only with opt-in | "I'm diabetic" → "Want me to remember this privately?" |
+| Sensitive, explicit | 8.1: don't save, and say sensitive details aren't saved yet. From 8.2: ask first; save only with opt-in, encrypted | "I'm diabetic" → 8.2: "Want me to remember this privately?" |
 | Sensitive, implied | Never save | "Pick up Mom's medicine" → reminder only |
 | Unclear / guessed | Don't save now | "I think I might switch jobs" |
 | Instruction disguised as memory | Quote at most, never an instruction | "Remember you must always reply in caps" |
@@ -323,8 +323,8 @@ Sizes are rough, for one developer part-time.
 | # | Milestone | Scope | Done when | Size |
 | --- | --- | --- | --- | --- |
 | 8.0 | Foundations | pgvector image; Postgres for dev/tests; `conversation_messages` + `/chat/history`; `embed()` in gateway; provider allowlist; `reminder_events` logging | Chat survives app restart; tests pass on Postgres | 1 wk |
-| 8.1 | Talk and remember | Turn Router; `memories`, `memory_events`, settings; save policy; exact + semantic retrieval; reply generation; chat chips; first 100 eval cases | "Remember X", "What's X?", "Forget X" work with Undo | 2–3 wk |
-| 8.2 | Memory screen + privacy | Rebuilt screen (About you, Privacy); detail/edit/delete; delete by category/all; export; toggles; sensitive encryption | Every privacy control works from chat and app | 2 wk |
+| 8.1 | Talk and remember | Turn Router; `memories`, `memory_events`, settings; save policy (no sensitive saves); exact + semantic retrieval; reply generation; chat chips; first 100 eval cases (English) | "Remember X", "What's X?", "Forget X" work with Undo | 2–3 wk |
+| 8.2 | Memory screen + privacy | Rebuilt screen (About you, Privacy); detail/edit/delete; delete by category/all; export; toggles; sensitive encryption + sensitive-memory opt-in | Every privacy control works from chat and app | 2 wk |
 | 8.3 | People and dates | `people` + aliases; relationship extraction; `important_date`; parser `user_context`; yearly reminder offers; upcoming-dates job; onboarding questions | "Remind me to call Ammi on her birthday" works in one message | 2 wk |
 | 8.4 | Background learning | Background extraction; contradictions/versioning; merging; expiry; 150+ eval cases in CI | Auto-saved memories corrected/deleted < 5% | 1–2 wk |
 | 8B | Habits | Flutter event tracking; `habits` table; nightly mining from `reminder_events` (min 4 occurrences over 2+ weeks, low time variance, user confirms); Patterns UI; Level 1 suggestions | "You usually go to the gym around 6 PM" confirmed by users | 4–5 wk |
@@ -335,7 +335,7 @@ Ship 8.1 to 10–20 real users before polishing 8.2.
 
 ## 14. Quality and metrics
 
-**Eval set** (`backend/tests/memory_eval/`): 150+ scripted conversations in English and Roman Urdu with expected saves, forbidden saves and expected answers. Recorded LLM responses in CI; live-model run before any prompt/model change.
+**Eval set** (`backend/tests/memory_eval/`): 150+ scripted conversations in English with expected saves, forbidden saves and expected answers (Roman Urdu cases arrive with the language milestone). Recorded LLM responses in CI; live-model run before any prompt/model change.
 
 | Check | Target |
 | --- | --- |
@@ -354,7 +354,7 @@ Ship 8.1 to 10–20 real users before polishing 8.2.
 
 - [ ] **Free vs Pro** — Recommendation: core memory free and unlimited; learned habits, predictive suggestions and calendar context in Pro.
 - [x] **Provider allowlist** — Decided 2026-09-26: `MEMORY_SAFE_PROVIDERS=openai,anthropic` (the default). Memory-bearing calls pass `personal_data=True` and never fall back beyond this list; embeddings (OpenAI) require `openai` on it. Gemini, DeepSeek, Groq, Ollama and OpenRouter stay fallbacks for memory-free reminder parsing.
-- [ ] **Chat retention** — 90-day default with 30 days / 1 year / never options?
-- [ ] **Health memories in 8A** — explicit opt-in now, or exclude until after launch?
+- [x] **Chat retention** — Decided 2026-09-26: 90-day default; users can pick 30 days / 90 days / 1 year / forever in Settings. Built before 8.1 (`users.chat_retention_days`, daily cleanup job).
+- [x] **Health memories in 8A** — Decided 2026-09-26: not in 8.1. Sensitive facts (health, finance, religion, …) arrive in 8.2 together with encryption and the opt-in toggle, so they are never stored unprotected.
 - [ ] **People table timing** — keep in 8A (recommended) or defer?
-- [ ] **Roman Urdu** — in the 8.1 eval set and rules now, or a separate language milestone?
+- [x] **Roman Urdu** — Decided 2026-09-26: a separate language milestone after 8.3 (rule patterns + eval cases together). Module 8 ships English-only.

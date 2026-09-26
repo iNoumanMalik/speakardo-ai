@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -7,6 +8,7 @@ import models
 import schemas
 from database import get_db
 from deps import get_current_user
+from services.chat_history import purge_expired_messages
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +49,10 @@ def update_user_preferences(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    if body.timezone is None and body.notifications_enabled is None:
+    # null is a real value for chat_retention_days (keep forever), so "sent" is
+    # checked with model_fields_set rather than `is None`.
+    retention_sent = "chat_retention_days" in body.model_fields_set
+    if body.timezone is None and body.notifications_enabled is None and not retention_sent:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No preference fields to update",
@@ -57,15 +62,27 @@ def update_user_preferences(
         current_user.timezone = body.timezone
     if body.notifications_enabled is not None:
         current_user.notifications_enabled = body.notifications_enabled
+    purged = 0
+    if retention_sent:
+        current_user.chat_retention_days = body.chat_retention_days
+        db.add(current_user)
+        db.flush()
+        # A shorter retention takes effect now, not at the next daily cleanup.
+        purged = purge_expired_messages(
+            db, datetime.now(timezone.utc), user_id=current_user.id
+        )
 
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
     logger.info(
-        "event=user_preferences_updated user_id=%s timezone=%s notifications_enabled=%s",
+        "event=user_preferences_updated user_id=%s timezone=%s notifications_enabled=%s "
+        "chat_retention_days=%s purged_messages=%s",
         current_user.id,
         current_user.timezone,
         current_user.notifications_enabled,
+        current_user.chat_retention_days,
+        purged,
     )
     return current_user
 

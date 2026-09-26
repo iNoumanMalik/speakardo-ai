@@ -189,8 +189,8 @@ Ship 8.1 to 10 to 20 real users before polishing 8.2. The first question to answ
 | Decision | Recommendation |
 | --- | --- |
 | Free vs Pro | Core memory free and unlimited (it drives retention). Habits, predictive suggestions and calendar context in Pro. |
-| AI providers allowed to see memories | Anthropic and OpenAI APIs only; other providers for memory-free reminder parsing. |
-| Chat history retention | 90 days by default, with 30 days, 1 year or never as options. |
-| Health memories in 8A | Explicit and opt-in only, or leave out until after launch. |
+| AI providers allowed to see memories | **Decided:** Anthropic and OpenAI APIs only (`MEMORY_SAFE_PROVIDERS`); other providers for memory-free reminder parsing. |
+| Chat history retention | **Decided:** 90 days by default, with 30 days, 1 year or forever as options. |
+| Health memories in 8A | **Decided:** not in 8.1; they arrive in 8.2 with encryption and an opt-in toggle. |
 | People table timing | Keep in 8A (recommended). |
-| Roman Urdu | Include in the 8.1 test set and rule patterns now. |
+| Roman Urdu | **Decided:** a separate language milestone after 8.3; Module 8 ships English-only. |

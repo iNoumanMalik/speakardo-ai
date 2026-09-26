@@ -198,11 +198,11 @@ Chat is not only a reminder parser. Every message goes through a Turn Router tha
 Requirements: 
 
 - Rules first; otherwise one combined LLM call returns intent, reminder slots and memory candidates as strict JSON. 
-- Chat messages are stored server-side (`conversation_messages`) with user-controlled retention (default 90 days). 
+- Chat messages are stored server-side (`conversation_messages`) with user-controlled retention (default 90 days; 30 days, 1 year or forever). 
 - The app loads history via GET /chat/history. 
 - Replies use relevant memories; the assistant says "I don't have that saved" instead of guessing. 
 - The greeting is personal (uses the user's name when known), not "AI Reminder assistant". 
-- Input in English, Roman Urdu and Urdu is supported. 
+- Input in English. Roman Urdu and Urdu follow in a language milestone after Module 8.3. 
 
 # **Module 3: Reminder Management** 
 

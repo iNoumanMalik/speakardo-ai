@@ -59,4 +59,21 @@ class ProfileService {
       jsonDecode(response.body) as Map<String, dynamic>,
     );
   }
+
+  /// Separate from [updatePreferences] because `null` is a real value here
+  /// (keep chat history forever), not "leave unchanged".
+  Future<UserProfile> updateChatRetention(int? days) async {
+    final response = await AuthHttp.patchJson(
+      Uri.parse('$_baseUrl/users/me/preferences'),
+      {'chat_retention_days': days},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update chat history setting');
+    }
+
+    return UserProfile.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
 }
