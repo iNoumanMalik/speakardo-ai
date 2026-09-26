@@ -12,7 +12,7 @@ Status: Strategic Roadmap
 
 Modules 1–4 (Auth, AI Chat, Reminders, Notifications) are complete. The build order after them is now: 
 
-1. AI Memory System (Phase 6 below, SRS Module 8), next, split into 8.0–8.4, then 8B Habits. Design: `docs/Project/Speakardo Module 8 - AI Memory System Design.md` 
+1. AI Memory System (Phase 6 below, SRS Module 8), next, split into 8.0–8.4, then 8B Habits. Design: `docs/modules/08-ai-memory/design.md` 
 2. Calendar Intelligence (Phase 7) 
 3. Voice Assistant (Phase 3) 
 4. Shared Reminders (Phase 4) and Team Workspaces (Phase 5), moved later 

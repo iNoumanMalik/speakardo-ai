@@ -8,7 +8,7 @@ _How Speakardo remembers, understands context, and acts at the right moment_
 | Version | 1.0, 26 September 2026 |
 | Owner | Nouman |
 | Status | Agreed direction; open decisions in section 12 |
-| Engineering spec | docs/Project/Speakardo Module 8 - AI Memory System Design.md |
+| Engineering spec | docs/modules/08-ai-memory/design.md |
 
 
 ## 1. The idea in one page

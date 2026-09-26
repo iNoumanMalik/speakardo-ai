@@ -8,7 +8,7 @@
 | Replaces | SRS Module 8 (the SRS now points here for details) |
 | Inputs | SRS v1.1, PRD, Roadmap, Notion "Speakardo Intelligence Core" pages 01–05, current codebase (Modules 1–4 done) |
 | Living doc | https://claude.ai/code/artifact/a4392161-45ef-4201-978c-c096d52af734 |
-| Companion | `Speakardo Module 8 - Memory Blueprint.pdf` / `.md` (vision, research review, roadmap) |
+| Companion | `blueprint.md` / `blueprint.pdf` (same folder) (vision, research review, roadmap) |
 
 ---
 

@@ -17,7 +17,7 @@ Status: Living Technical Document
 | 1.0 | 2026-06 | Initial SRS |
 | 1.1 | 2026-09-25 | Module 2 expanded into a conversational assistant; Module 8 (AI Memory) fully specified with a separate design doc; Memories data model and Memory API expanded; roadmap order changed (Memory before Shared Reminders and Teams) |
 
-Detailed design for Module 8: `docs/Project/Speakardo Module 8 - AI Memory System Design.md` 
+Detailed design for Module 8: `docs/modules/08-ai-memory/design.md` 
 
 # **1. Introduction** 
 
@@ -420,9 +420,9 @@ Future multilingual support
 
 # **Module 8: AI Memory System** 
 
-Full design: `docs/Project/Speakardo Module 8 - AI Memory System Design.md` 
+Full design: `docs/modules/08-ai-memory/design.md` 
 
-Vision, research review and roadmap: `docs/Project/Speakardo Module 8 - Memory Blueprint.pdf` 
+Vision, research review and roadmap: `docs/modules/08-ai-memory/blueprint.md` (PDF: `docs/modules/08-ai-memory/blueprint.pdf`) 
 
 ## **Goal** 
 
