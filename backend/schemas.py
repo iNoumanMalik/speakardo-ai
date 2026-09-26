@@ -87,7 +87,7 @@ class ReminderResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(max_length=4000)
     pending_context: Optional[dict[str, Any]] = None
 
 
@@ -95,6 +95,24 @@ class ChatResponse(BaseModel):
     reply: str
     parsed_reminder: Optional[dict[str, Any]] = None
     client_action: Optional[dict[str, Any]] = None
+
+
+class ChatHistoryMessage(BaseModel):
+    id: UUID
+    role: str
+    content: str
+    intent: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChatHistoryResponse(BaseModel):
+    """Newest first. Pass next_before as ?before= to fetch the previous page."""
+
+    messages: list[ChatHistoryMessage]
+    has_more: bool
+    next_before: Optional[UUID] = None
 
 
 class ReminderSnooze(BaseModel):

@@ -7,6 +7,7 @@ import 'memory_screen.dart';
 import 'mic_screen.dart';
 import 'profile_screen.dart';
 import 'reminders_screen.dart';
+import '../services/chat_provider.dart';
 import '../services/notification_action_handler.dart';
 import '../services/notification_deep_link.dart';
 import '../services/device_timezone_service.dart';
@@ -42,7 +43,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       unawaited(_consumeNotificationDeepLink());
       unawaited(_syncDeviceTimezone());
+      _loadChatHistory();
     });
+  }
+
+  /// MainScreen mounts on every sign-in, so start from an empty chat (never the
+  /// previous user's) and restore this user's history from the server.
+  void _loadChatHistory() {
+    if (!mounted) return;
+    final chat = context.read<ChatProvider>();
+    chat.clear();
+    unawaited(chat.loadHistory());
   }
 
   Future<void> _syncDeviceTimezone() async {

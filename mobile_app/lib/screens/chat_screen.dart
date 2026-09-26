@@ -321,6 +321,9 @@ class _ChatScreenState extends State<ChatScreen>
               child: Consumer<ChatProvider>(
                 builder: (context, chatProvider, child) {
                   if (chatProvider.messages.isEmpty) {
+                    if (chatProvider.isHistoryLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
                     return const _ChatEmptyState();
                   }
                   return ListView.builder(
@@ -329,6 +332,14 @@ class _ChatScreenState extends State<ChatScreen>
                     itemCount: chatProvider.messages.length,
                     itemBuilder: (context, index) {
                       final msg = chatProvider.messages[index];
+                      // The list is reversed: the last index is the oldest
+                      // message, at the top. Reaching it loads older history.
+                      if (index == chatProvider.messages.length - 1 &&
+                          chatProvider.hasMoreHistory) {
+                        WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => chatProvider.loadOlder(),
+                        );
+                      }
                       return MessageBubble(message: msg);
                     },
                   );

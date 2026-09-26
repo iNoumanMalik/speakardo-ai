@@ -1,8 +1,9 @@
 import logging
-from typing import Any, Dict, List
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 import models
@@ -12,6 +13,7 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from ai_service.extractor import extract_reminder_details
+from services.chat_history import get_message_for_user, list_history, record_exchange
 from services.repeat_schedule import repeat_label
 
 from database import get_db
@@ -57,21 +59,12 @@ def _client_reminder_draft(parsed: dict, *, confirmable: bool) -> dict:
     }
 
 
-@router.post("", response_model=schemas.ChatResponse)
-@limiter.limit("60/minute")
-async def process_chat(
-    request: Request,
+async def _build_reply(
     body: schemas.ChatRequest,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    _ = request
-    logger.info(
-        "event=chat_request user_id=%s message_len=%s has_pending_context=%s",
-        current_user.id,
-        len(body.message or ""),
-        bool(body.pending_context),
-    )
+    db: Session,
+    current_user: models.User,
+) -> Tuple[schemas.ChatResponse, str]:
+    """Reply to one chat message, plus the intent stored with it in history."""
     message_lower = body.message.lower().strip()
     greetings = [
         "hi",
@@ -89,7 +82,7 @@ async def process_chat(
             "Hello! I'm your AI Reminder assistant. How can I help you today? "
             "You can say things like 'Remind me to call Mom tomorrow at 9am'."
         )
-        return schemas.ChatResponse(reply=reply, parsed_reminder=None)
+        return schemas.ChatResponse(reply=reply, parsed_reminder=None), "greeting"
 
     recent = _server_recent_reminders(db, current_user.id)
     parsed = await extract_reminder_details(
@@ -105,7 +98,7 @@ async def process_chat(
             "I couldn't quite understand that. Please say what to do and when "
             "(for example: 'Remind me to buy milk at 5 PM today')."
         )
-        return schemas.ChatResponse(reply=reply, parsed_reminder=None)
+        return schemas.ChatResponse(reply=reply, parsed_reminder=None), "unparsed"
 
     intent = parsed.get("intent") or "create"
     logger.info(
@@ -137,20 +130,23 @@ async def process_chat(
             )
             draft = _client_reminder_draft(parsed, confirmable=True)
             draft["edit_reminder_id"] = str(eid)
-            return schemas.ChatResponse(reply=reply, parsed_reminder=draft)
+            return schemas.ChatResponse(reply=reply, parsed_reminder=draft), intent
         reply = (
             "I couldn't match that to one of your saved reminders. "
             "Open the Reminders tab so your list is up to date, or name the task clearly."
         )
-        return schemas.ChatResponse(reply=reply, parsed_reminder=None)
+        return schemas.ChatResponse(reply=reply, parsed_reminder=None), intent
 
     if parsed.get("needs_clarification"):
         q = parsed.get("clarification_question") or (
             "Could you add a bit more detail about what and when?"
         )
-        return schemas.ChatResponse(
-            reply=q,
-            parsed_reminder=_client_reminder_draft(parsed, confirmable=False),
+        return (
+            schemas.ChatResponse(
+                reply=q,
+                parsed_reminder=_client_reminder_draft(parsed, confirmable=False),
+            ),
+            intent,
         )
 
     if parsed.get("needs_time") or not parsed.get("time"):
@@ -161,9 +157,12 @@ async def process_chat(
             + (f" on {date}" if date else "")
             + ". What time should I remind you? (e.g. 9:00 PM or 21:00)"
         )
-        return schemas.ChatResponse(
-            reply=reply,
-            parsed_reminder=_client_reminder_draft(parsed, confirmable=False),
+        return (
+            schemas.ChatResponse(
+                reply=reply,
+                parsed_reminder=_client_reminder_draft(parsed, confirmable=False),
+            ),
+            intent,
         )
 
     task = parsed.get("task", "your task")
@@ -175,7 +174,77 @@ async def process_chat(
         if label:
             repeat_hint = f" ({label.lower()})"
     reply = f"Should I remind you to {task} on {date} at {time_str}{repeat_hint}?"
-    return schemas.ChatResponse(
-        reply=reply,
-        parsed_reminder=_client_reminder_draft(parsed, confirmable=True),
+    return (
+        schemas.ChatResponse(
+            reply=reply,
+            parsed_reminder=_client_reminder_draft(parsed, confirmable=True),
+        ),
+        intent,
+    )
+
+
+@router.post("", response_model=schemas.ChatResponse)
+@limiter.limit("60/minute")
+async def process_chat(
+    request: Request,
+    body: schemas.ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _ = request
+    received_at = datetime.now(timezone.utc)
+    logger.info(
+        "event=chat_request user_id=%s message_len=%s has_pending_context=%s",
+        current_user.id,
+        len(body.message or ""),
+        bool(body.pending_context),
+    )
+    response, intent = await _build_reply(body, db, current_user)
+
+    # A history failure must never cost the user their reply.
+    try:
+        record_exchange(
+            db,
+            user_id=current_user.id,
+            user_text=body.message,
+            reply=response.reply,
+            intent=intent,
+            received_at=received_at,
+            replied_at=datetime.now(timezone.utc),
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("event=chat_history_write_failed user_id=%s", current_user.id)
+    return response
+
+
+@router.get("/history", response_model=schemas.ChatHistoryResponse)
+@limiter.limit("60/minute")
+def get_chat_history(
+    request: Request,
+    before: Optional[UUID] = Query(None, description="Return messages older than this message id"),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    _ = request
+    cursor = None
+    if before is not None:
+        # Same 404 for a missing id and another user's id, so nothing leaks.
+        cursor = get_message_for_user(db, current_user.id, before)
+        if cursor is None:
+            raise HTTPException(status_code=404, detail="Message not found")
+
+    rows, has_more = list_history(db, current_user.id, before=cursor, limit=limit)
+    logger.info(
+        "event=chat_history_list user_id=%s count=%s has_more=%s",
+        current_user.id,
+        len(rows),
+        has_more,
+    )
+    return schemas.ChatHistoryResponse(
+        messages=[schemas.ChatHistoryMessage.model_validate(r) for r in rows],
+        has_more=has_more,
+        next_before=rows[-1].id if has_more and rows else None,
     )

@@ -27,7 +27,7 @@ DEFAULT_MODELS: Dict[ProviderName, str] = {
     ProviderName.GEMINI: "models/gemini-2.5-flash",
     ProviderName.DEEPSEEK: "deepseek-chat",
     ProviderName.GROQ: "llama-3.3-70b-versatile",
-    ProviderName.ANTHROPIC: "claude-3-5-haiku-20241022",
+    ProviderName.ANTHROPIC: "claude-haiku-4-5",
     ProviderName.OLLAMA: "llama3.2",
     ProviderName.OPENROUTER: "openai/gpt-4o-mini",
 }

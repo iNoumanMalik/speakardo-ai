@@ -47,3 +47,14 @@ class AllProvidersFailedError(Exception):
             f"{f['provider']}: {f['error']}" for f in failures
         )
         super().__init__(f"All providers failed: {summary}")
+
+
+class NoSafeProviderError(AllProvidersFailedError):
+    """A personal-data call had no allowlisted provider; nothing was sent anywhere."""
+
+    def __init__(self) -> None:
+        self.failures = []
+        Exception.__init__(
+            self,
+            "No memory-safe AI provider is configured (see MEMORY_SAFE_PROVIDERS)",
+        )

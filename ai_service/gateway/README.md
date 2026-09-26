@@ -10,7 +10,7 @@ Production-oriented async orchestration for reminder extraction and future AI ta
 | Gemini | `GEMINI_API_KEY` | `models/gemini-2.5-flash` |
 | DeepSeek | `DEEPSEEK_API_KEY` | `deepseek-chat` |
 | Groq | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-3-5-haiku-20241022` |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-4-5` |
 | Ollama | `OLLAMA_BASE_URL` (optional key) | `llama3.2` |
 | OpenRouter | `OPENROUTER_API_KEY` | `openai/gpt-4o-mini` |
 
@@ -44,6 +44,29 @@ router = get_default_router()
 result = await router.generate("Say hello", temperature=0)
 print(result.provider, result.text)
 ```
+
+## Personal data: provider allowlist
+
+Calls whose prompt carries memories or chat history must pass `personal_data=True`:
+
+```python
+result = await router.generate(prompt, personal_data=True)
+```
+
+These calls only reach providers listed in `MEMORY_SAFE_PROVIDERS` (default `openai,anthropic`), in that order, and never fall back to any other provider. The list is built independently of `AI_FALLBACK_CHAIN`. If none of the listed providers is configured, `NoSafeProviderError` is raised (a subclass of `AllProvidersFailedError`) and nothing is sent. A value with no valid provider names allows none.
+
+## Embeddings
+
+```python
+from ai_service.gateway.embeddings import embed
+
+vectors = await embed(["Sara's birthday is June 15"])  # list of 1536-float lists
+```
+
+- One provider, `openai` with `text-embedding-3-small` at 1536 dimensions (`EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`). There is no fallback, because vectors from different models can't be compared.
+- `get_default_embedder()` refuses to start unless the embedding provider is in `MEMORY_SAFE_PROVIDERS`, since embedded text is always personal data.
+- Batches of up to 256 texts, with retries and timeout from `AI_MAX_RETRIES_PER_PROVIDER` / `AI_REQUEST_TIMEOUT_SECONDS`. Every vector's length is checked.
+- Tests use `gateway/fakes.py` `FakeEmbeddingProvider` (deterministic, offline): `await embed(texts, embedder=FakeEmbeddingProvider())`.
 
 ## Add a new provider
 

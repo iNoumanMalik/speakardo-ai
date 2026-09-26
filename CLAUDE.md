@@ -36,7 +36,7 @@ mobile_app/     Flutter app
   lib/services/   *_provider.dart (ChangeNotifier state), api_service.dart, auth_http.dart
   lib/widgets/    app_chrome.dart (theme + SpeakardoScaffold/TopBar), speakardo_icons.dart
   test/           flutter tests
-docker/         docker-compose Postgres (local dev currently uses Homebrew Postgres 16)
+docker/         docker-compose Postgres 16 + pgvector (dev and test databases)
 docs/           product docs, module designs, setup guides
 export-react/   design reference screens (gitignored). UI inspiration only, not app code
 ```
@@ -44,14 +44,14 @@ export-react/   design reference screens (gitignored). UI inspiration only, not 
 ## Commands
 
 ```bash
-# Database (local)
-brew services start postgresql@16
+# Database (local): Postgres 16 + pgvector in Docker. Setup: docs/setup/local-database.md
+docker compose -f docker/docker-compose.yml up -d
 
 # Backend: run from backend/
-source venv/bin/activate
+source venv/bin/activate                 # needs requirements-dev.txt installed for pytest
 uvicorn app:app --reload                 # http://localhost:8000
-pytest                                   # run from backend/
-alembic -c alembic.ini upgrade head      # apply migrations
+pytest                                   # Postgres test DB (ai_reminder_test), never SQLite
+alembic -c alembic.ini upgrade head      # apply migrations (works on an empty database)
 
 # Mobile: run from mobile_app/
 flutter pub get
@@ -65,6 +65,8 @@ flutter analyze
 - The backend loads the **repo-root `.env`** (`backend/env_config.py`, `override=True`). The README's mention of `backend/.env` is outdated.
 - `mobile_app/.env` is loaded by flutter_dotenv (`GOOGLE_WEB_CLIENT_ID`).
 - If `DATABASE_URL` is unset, the backend falls back to SQLite (`backend/ai_reminder.db`). Module 8 needs Postgres with pgvector; never build memory features on SQLite.
+- Tests use `TEST_DATABASE_URL` (default: the Docker `ai_reminder_test` database). `tests/conftest.py` sets it after `env_config` loads `.env`, and refuses any target that isn't a local `*_test` database.
+- `MEMORY_SAFE_PROVIDERS` (default `openai,anthropic`) lists the only providers allowed to receive memories or chat history. Pass `personal_data=True` to `AIRouter.generate` for those calls; embeddings (`ai_service/gateway/embeddings.py`) always require the embedding provider to be on this list.
 - LLM providers are set by `AI_FALLBACK_CHAIN` plus `*_API_KEY` variables.
 - **Never print, copy or commit secrets:** `.env` files, `backend/firebase-service-account.json`, `google-services.json`, `GoogleService-Info.plist`.
 
@@ -108,4 +110,8 @@ flutter analyze
 - macOS ignores filename case: `docs/Setup` and `docs/setup` are the same folder. Use lowercase kebab-case.
 - The backend imports `ai_service` through a `sys.path` insert (see `backend/routers/chat.py`).
 - Chat currently treats every message as a reminder request; the turn router in 8.1 changes this.
-- `docker/docker-compose.yml` uses `postgres:15` without pgvector, while local dev uses Homebrew Postgres 16. Align both in 8.0 (`pgvector/pgvector:pg16`, plus `brew install pgvector`).
+- Homebrew's `pgvector` formula only builds for `postgresql@17`/`@18`, so local Postgres runs in Docker (`pgvector/pgvector:pg16`), not Homebrew. Stop any Homebrew Postgres first: both use port 5432.
+- `env_config.py` loads `.env` with `override=True`, so `DATABASE_URL=… alembic …` on the command line is silently ignored. Change `.env`, or set the variable after `env_config` is imported (as `tests/conftest.py` does).
+- Use `backend/venv` (it has every requirement). `backend/.venv` is stale: no `google-genai` and `anthropic` 0.x. A provider whose SDK is missing silently drops out: Gemini from the fallback chain, Anthropic from `MEMORY_SAFE_PROVIDERS`.
+- The `anthropic` SDK is 1.x, which removed `temperature`/`top_p`/`top_k` from `messages.create()`. The provider sends `temperature` through `extra_body` (Haiku 4.5 accepts it). `tests/test_anthropic_provider.py` checks the call against the installed SDK's signature.
+- `reminder_events.reminder_id` has no foreign key on purpose: the event log outlives deleted reminders.

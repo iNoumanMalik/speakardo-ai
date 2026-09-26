@@ -15,6 +15,7 @@ from services.local_schedule import (
     is_snooze_due,
     local_now,
 )
+from services.reminder_events import log_reminder_event
 from services.reminder_state import reset_for_reschedule
 from services.repeat_schedule import normalize_repeat
 
@@ -165,6 +166,29 @@ def _mark_triggered(
     )
 
 
+def _fired_slot_utc(
+    reminder: models.Reminder,
+    now: datetime,
+    user_timezone: Optional[str],
+) -> datetime:
+    """The scheduled time that is firing now (for the reminder_events log)."""
+    if normalize_repeat(reminder.repeat):
+        if is_snooze_due(reminder.snoozed_until, now) and reminder.snoozed_until:
+            return reminder.snoozed_until
+        local = local_now(now, user_timezone)
+        try:
+            hour, minute = (int(p) for p in (reminder.local_time or "").split(":"))
+        except ValueError:
+            return now
+        return local.replace(hour=hour, minute=minute, second=0, microsecond=0).astimezone(
+            timezone.utc
+        )
+    scheduled_at = reminder.datetime
+    if scheduled_at.tzinfo is None:
+        return scheduled_at.replace(tzinfo=timezone.utc)
+    return scheduled_at.astimezone(timezone.utc)
+
+
 def _dedupe_key_for_fire(
     reminder: models.Reminder,
     device_id,
@@ -258,6 +282,7 @@ def _process_reminder(
         return
 
     delivered = False
+    newly_delivered = False
     last_error = None
     sends_attempted = 0
 
@@ -295,6 +320,7 @@ def _process_reminder(
             reminder_id=str(reminder.id),
         )
         delivered = delivered or result.success
+        newly_delivered = newly_delivered or result.success
         if not result.success:
             last_error = result.error_message or result.error_code
             logger.warning(
@@ -344,6 +370,16 @@ def _process_reminder(
     reminder.attempt_count = (reminder.attempt_count or 0) + 1
 
     if delivered:
+        if newly_delivered:
+            # Captured before _mark_triggered moves a repeating reminder on.
+            log_reminder_event(
+                db,
+                reminder,
+                models.ReminderEventType.FIRED,
+                user_timezone=tz,
+                scheduled_for=_fired_slot_utc(reminder, now, tz),
+                now=now,
+            )
         _mark_triggered(db, reminder, now, user_timezone=tz)
         return
 

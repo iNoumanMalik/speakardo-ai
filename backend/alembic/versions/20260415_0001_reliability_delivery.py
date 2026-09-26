@@ -1,7 +1,7 @@
 """reliability delivery tracking
 
 Revision ID: 20260415_0001
-Revises:
+Revises: 20260414_0001
 Create Date: 2026-04-15
 """
 
@@ -12,7 +12,7 @@ from sqlalchemy import inspect
 
 
 revision = "20260415_0001"
-down_revision = None
+down_revision = "20260414_0001"
 branch_labels = None
 depends_on = None
 

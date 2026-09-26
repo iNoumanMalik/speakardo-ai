@@ -4,7 +4,12 @@ import time
 from typing import Optional
 
 from .base import BaseLLMProvider
-from .exceptions import AllProvidersFailedError, ProviderError, ProviderTimeoutError
+from .exceptions import (
+    AllProvidersFailedError,
+    NoSafeProviderError,
+    ProviderError,
+    ProviderTimeoutError,
+)
 from .types import GenerateResult, RouterConfig
 
 logger = logging.getLogger(__name__)
@@ -19,11 +24,28 @@ class AIRouter:
         self,
         providers: list[BaseLLMProvider],
         config: Optional[RouterConfig] = None,
+        safe_providers: Optional[list[BaseLLMProvider]] = None,
     ) -> None:
         if not providers:
             raise ValueError("AIRouter requires at least one configured provider")
         self.providers = providers
         self.config = config or RouterConfig()
+        # The only providers allowed to receive memories or chat history.
+        self.safe_providers = list(safe_providers or [])
+
+    def _personal_data_chain(
+        self, provider_chain: Optional[list[BaseLLMProvider]]
+    ) -> list[BaseLLMProvider]:
+        allowed = {p.name for p in self.safe_providers}
+        chain = [p for p in (provider_chain or self.safe_providers) if p.name in allowed]
+        if not chain:
+            logger.error("event=ai_personal_data_blocked reason=no_safe_provider")
+            raise NoSafeProviderError()
+        logger.info(
+            "event=ai_personal_data_call providers=%s",
+            ",".join(p.name.value for p in chain),
+        )
+        return chain
 
     async def generate(
         self,
@@ -33,8 +55,17 @@ class AIRouter:
         response_format: Optional[str] = None,
         model: Optional[str] = None,
         provider_chain: Optional[list[BaseLLMProvider]] = None,
+        personal_data: bool = False,
     ) -> GenerateResult:
-        chain = provider_chain or self.providers
+        """Generate text, falling back across providers.
+
+        personal_data=True (prompt carries memories or chat history) restricts the
+        chain to MEMORY_SAFE_PROVIDERS and never falls back beyond them.
+        """
+        if personal_data:
+            chain = self._personal_data_chain(provider_chain)
+        else:
+            chain = provider_chain or self.providers
         failures: list[dict] = []
         fallback_used = False
 

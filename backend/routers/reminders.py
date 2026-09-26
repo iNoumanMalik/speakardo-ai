@@ -11,6 +11,7 @@ from deps import get_current_user
 import models
 import schemas
 from services.local_schedule import apply_local_schedule_to_reminder
+from services.reminder_events import log_reminder_event
 from services.reminder_state import clear_delivery_history, reset_for_reschedule
 from services.repeat_schedule import normalize_repeat, repeat_label
 
@@ -54,6 +55,14 @@ def create_reminder(
     )
     apply_local_schedule_to_reminder(db_reminder, current_user.timezone)
     db.add(db_reminder)
+    db.flush()  # assigns db_reminder.id for the event row
+    log_reminder_event(
+        db,
+        db_reminder,
+        models.ReminderEventType.CREATED,
+        user_timezone=current_user.timezone,
+        scheduled_for=db_reminder.datetime,
+    )
     db.commit()
     db.refresh(db_reminder)
     logger.info(
@@ -104,6 +113,13 @@ def delete_reminder(
     db.query(models.DeliveryAttempt).filter(
         models.DeliveryAttempt.reminder_id == reminder_id
     ).delete(synchronize_session=False)
+    log_reminder_event(
+        db,
+        db_reminder,
+        models.ReminderEventType.DELETED,
+        user_timezone=current_user.timezone,
+        scheduled_for=db_reminder.datetime,
+    )
     db.delete(db_reminder)
     db.commit()
     logger.info("event=reminder_deleted user_id=%s reminder_id=%s", current_user.id, reminder_id)
@@ -136,6 +152,14 @@ def update_reminder(
     cleared = 0
     if rescheduled:
         cleared = reset_for_reschedule(db, db_reminder)
+    if body.task is not None or body.datetime is not None or body.repeat is not None:
+        log_reminder_event(
+            db,
+            db_reminder,
+            models.ReminderEventType.EDITED,
+            user_timezone=current_user.timezone,
+            scheduled_for=db_reminder.datetime,
+        )
     db.commit()
     db.refresh(db_reminder)
     logger.info(
@@ -186,6 +210,14 @@ def republish_reminder(
     apply_local_schedule_to_reminder(db_reminder, current_user.timezone)
     db_reminder.snoozed_until = None
     cleared = reset_for_reschedule(db, db_reminder)
+    log_reminder_event(
+        db,
+        db_reminder,
+        models.ReminderEventType.EDITED,
+        user_timezone=current_user.timezone,
+        scheduled_for=db_reminder.datetime,
+        now=now,
+    )
     db.commit()
     db.refresh(db_reminder)
     logger.info(
@@ -210,6 +242,15 @@ def complete_reminder(
         raise HTTPException(status_code=404, detail="Reminder not found")
 
     now = datetime.now(timezone.utc)
+    # The slot being completed, captured before a repeating reminder advances.
+    log_reminder_event(
+        db,
+        db_reminder,
+        models.ReminderEventType.COMPLETED,
+        user_timezone=current_user.timezone,
+        scheduled_for=db_reminder.datetime,
+        now=now,
+    )
     if _reschedule_repeating_reminder(db, db_reminder, now):
         db.commit()
         db.refresh(db_reminder)
@@ -263,6 +304,14 @@ def snooze_reminder(
     db_reminder.next_attempt_at = None
     db_reminder.attempt_count = 0
     db_reminder.last_error = None
+    log_reminder_event(
+        db,
+        db_reminder,
+        models.ReminderEventType.SNOOZED,
+        user_timezone=current_user.timezone,
+        scheduled_for=new_snooze_until,
+        now=now,
+    )
     db.commit()
     db.refresh(db_reminder)
 

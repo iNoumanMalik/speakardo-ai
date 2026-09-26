@@ -6,9 +6,20 @@ import 'package:intl/intl.dart';
 import '../utils/repeat_options.dart';
 
 class ChatProvider with ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  ChatProvider({ApiService? apiService})
+      : _apiService = apiService ?? ApiService();
+
+  final ApiService _apiService;
   final List<Message> _messages = [];
   bool _isLoading = false;
+
+  /// Server history (GET /chat/history), loaded newest page first.
+  bool _isHistoryLoading = false;
+  bool _hasMoreHistory = false;
+  String? _nextBefore;
+
+  /// Bumped by [clear] so a history request that finishes after a logout is ignored.
+  int _historyGeneration = 0;
 
   /// Last assistant draft for Phase 2 (clarification, time follow-up, edit-in-chat).
   Map<String, dynamic>? _pendingContext;
@@ -16,6 +27,61 @@ class ChatProvider with ChangeNotifier {
 
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading;
+  bool get isHistoryLoading => _isHistoryLoading;
+  bool get hasMoreHistory => _hasMoreHistory;
+
+  /// Forget the conversation held in memory (another user may be signing in).
+  void clear() {
+    _historyGeneration++;
+    _messages.clear();
+    _pendingContext = null;
+    _isHistoryLoading = false;
+    _hasMoreHistory = false;
+    _nextBefore = null;
+    notifyListeners();
+  }
+
+  /// Loads the newest page of stored messages. Messages sent while it loads
+  /// stay in front of the restored ones.
+  Future<void> loadHistory() => _loadHistoryPage(before: null);
+
+  /// Loads the next older page, if any. Overlapping calls are ignored.
+  Future<void> loadOlder() async {
+    if (!_hasMoreHistory || _nextBefore == null) return;
+    await _loadHistoryPage(before: _nextBefore);
+  }
+
+  Future<void> _loadHistoryPage({required String? before}) async {
+    if (_isHistoryLoading) return;
+    final generation = _historyGeneration;
+    _isHistoryLoading = true;
+    notifyListeners();
+    try {
+      final page = await _apiService.getChatHistory(before: before);
+      if (generation != _historyGeneration) return;
+      _appendHistoryPage(page);
+    } catch (e) {
+      debugPrint('ChatProvider: history load failed: $e');
+    } finally {
+      if (generation == _historyGeneration) {
+        _isHistoryLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void _appendHistoryPage(Map<String, dynamic> page) {
+    final known = _messages.map((m) => m.id).whereType<String>().toSet();
+    final rows = page['messages'] as List<dynamic>? ?? const [];
+    for (final row in rows) {
+      final message = Message.fromHistoryJson(row as Map<String, dynamic>);
+      if (message.id != null && known.contains(message.id)) continue;
+      // _messages is newest first, so older history goes at the end.
+      _messages.add(message);
+    }
+    _hasMoreHistory = page['has_more'] == true;
+    _nextBefore = page['next_before']?.toString();
+  }
   // bool get voiceFeedbackEnabled => _voiceFeedbackEnabled;
 
   // void setVoiceFeedbackEnabled(bool enabled) {

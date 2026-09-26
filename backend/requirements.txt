@@ -7,9 +7,9 @@ pydantic
 pydantic-settings
 python-dotenv
 openai
-google-generativeai
+google-genai
 httpx
-anthropic
+anthropic>=1,<2
 APScheduler
 deepseek
 firebase-admin

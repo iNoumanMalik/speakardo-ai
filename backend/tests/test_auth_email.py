@@ -2,51 +2,11 @@
 
 from unittest.mock import patch
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
 import models
-from app import app
 from auth_security import create_access_token, hash_password, verify_password
-from database import Base, get_db
 from services.email_tokens import create_otp
 
-
-@pytest.fixture(autouse=True)
-def _jwt_secret(monkeypatch):
-    monkeypatch.setenv("JWT_SECRET", "test-secret-key-32chars-minimum!!")
-
-
-@pytest.fixture()
-def db_session():
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
-    Session = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-    session = Session()
-    yield session
-    session.close()
-    engine.dispose()
-
-
-@pytest.fixture()
-def client(db_session):
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as test_client:
-        yield test_client
-    app.dependency_overrides.clear()
+# db_session and client fixtures come from conftest.py (Postgres).
 
 
 def _auth_headers(user: models.User) -> dict[str, str]:

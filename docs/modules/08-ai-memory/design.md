@@ -115,7 +115,7 @@ The existing three-layer reminder parser is unchanged; the router hands reminder
 
 ## 6. Data model
 
-Prerequisites: Docker image `pgvector/pgvector:pg15`; `CREATE EXTENSION vector` in an Alembic migration; no SQLite fallback for memory code (tests run on Postgres).
+Prerequisites: Docker image `pgvector/pgvector:pg16` (Homebrew's pgvector formula only supports PG17/18, so local dev uses Docker too); `CREATE EXTENSION vector` in an Alembic migration; no SQLite fallback for memory code (tests run on Postgres). See `docs/setup/local-database.md`.
 
 ### 6.1 `memories`
 
@@ -149,6 +149,10 @@ Indexes: `(user_id, status)`, `(user_id, person_id)`, `(user_id, key)`, ivfflat 
 - **`memory_events`** (audit): `id, memory_id, user_id, action (created|updated|used|confirmed|rejected|deleted), actor (user|system), detail jsonb, created_at`.
 - **`memory_settings`** (or columns on `users`): `memory_enabled`, `learn_from_chat`, `sensitive_memory_opt_in`, `chat_retention_days`.
 - **`reminder_events`** (from 8.0): `id, reminder_id, user_id, event (created|fired|snoozed|completed|dismissed|edited|deleted), scheduled_for, occurred_at, local_time, weekday`. Raw log that 8B habit mining depends on — start collecting now, because patterns need weeks of history.
+  - `reminder_id` has **no foreign key**, so the log outlives deleted reminders; rows go with the user (`ON DELETE CASCADE` on `user_id`).
+  - `scheduled_for` is the fire time the event is about; `local_time` (`HH:MM`) and `weekday` (0 = Mon) are `occurred_at` in the user's timezone.
+  - `fired` is logged only when a push was actually delivered (not when notifications are off). Republish is logged as `edited`.
+  - `dismissed` is allowed but nothing produces it yet: the app can't observe a swiped-away notification. Flutter event tracking in 8B adds it.
 - **`reminders.memory_id`** (new nullable FK): links reminders created from a memory (e.g. yearly birthday reminder).
 
 Sensitive memory content is encrypted at the application level (AES-GCM, key outside the database).
@@ -349,7 +353,7 @@ Ship 8.1 to 10–20 real users before polishing 8.2.
 ## 15. Open decisions
 
 - [ ] **Free vs Pro** — Recommendation: core memory free and unlimited; learned habits, predictive suggestions and calendar context in Pro.
-- [ ] **Provider allowlist** — Recommendation: Anthropic and OpenAI API only for memory-bearing calls; DeepSeek, Groq, OpenRouter for memory-free parsing.
+- [x] **Provider allowlist** — Decided 2026-09-26: `MEMORY_SAFE_PROVIDERS=openai,anthropic` (the default). Memory-bearing calls pass `personal_data=True` and never fall back beyond this list; embeddings (OpenAI) require `openai` on it. Gemini, DeepSeek, Groq, Ollama and OpenRouter stay fallbacks for memory-free reminder parsing.
 - [ ] **Chat retention** — 90-day default with 30 days / 1 year / never options?
 - [ ] **Health memories in 8A** — explicit opt-in now, or exclude until after launch?
 - [ ] **People table timing** — keep in 8A (recommended) or defer?

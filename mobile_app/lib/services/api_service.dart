@@ -32,6 +32,24 @@ class ApiService {
     throw Exception('Failed to send message: ${response.statusCode}');
   }
 
+  /// Newest-first page of stored chat messages. Pass the previous page's
+  /// `next_before` as [before] to load older messages.
+  Future<Map<String, dynamic>> getChatHistory({
+    String? before,
+    int limit = 50,
+  }) async {
+    final query = <String, String>{'limit': '$limit'};
+    if (before != null) query['before'] = before;
+    final response = await AuthHttp.get(
+      Uri.parse('$baseUrl/chat/history').replace(queryParameters: query),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception(_errorBody(response, 'Failed to load chat history'));
+  }
+
   Future<Map<String, dynamic>> patchReminder(
     String id,
     Map<String, dynamic> reminderData,

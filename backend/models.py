@@ -1,5 +1,18 @@
 import uuid
-from sqlalchemy import Boolean, Column, String, DateTime, ForeignKey, Enum, Integer, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    String,
+    DateTime,
+    ForeignKey,
+    Enum,
+    Index,
+    Integer,
+    SmallInteger,
+    Text,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime, timezone
 from database import Base
@@ -21,6 +34,22 @@ class DeliveryStatus(str, enum.Enum):
 class AuthTokenPurpose:
     EMAIL_VERIFY = "email_verify"
     PASSWORD_RESET = "password_reset"
+
+
+class ChatRole:
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class ReminderEventType:
+    CREATED = "created"
+    FIRED = "fired"
+    SNOOZED = "snoozed"
+    COMPLETED = "completed"
+    # Reserved: nothing observes a dismissal yet (Flutter event tracking arrives in 8B).
+    DISMISSED = "dismissed"
+    EDITED = "edited"
+    DELETED = "deleted"
 
 
 class User(Base):
@@ -99,3 +128,64 @@ class DeliveryAttempt(Base):
     error_code = Column(String, nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class ConversationMessage(Base):
+    """One chat turn (user or assistant), stored so history survives app restarts."""
+
+    __tablename__ = "conversation_messages"
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('user', 'assistant')", name="ck_conversation_messages_role"
+        ),
+        # Serves newest-first keyset pagination (Postgres scans it backwards).
+        Index("ix_conversation_messages_user_created", "user_id", "created_at", "id"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    session_id = Column(UUID(as_uuid=True), nullable=False)
+    role = Column(String(16), nullable=False)
+    content = Column(Text, nullable=False)
+    intent = Column(String(32), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=text("now()"),
+    )
+
+
+class ReminderEvent(Base):
+    """Append-only log of what happened to a reminder; raw input for 8B habit mining."""
+
+    __tablename__ = "reminder_events"
+    __table_args__ = (
+        CheckConstraint(
+            "event IN ('created', 'fired', 'snoozed', 'completed', 'dismissed', 'edited', 'deleted')",
+            name="ck_reminder_events_event",
+        ),
+        Index("ix_reminder_events_user_occurred", "user_id", "occurred_at"),
+        Index("ix_reminder_events_reminder_id", "reminder_id"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # No foreign key: the log must outlive the reminder (the 'deleted' event).
+    reminder_id = Column(UUID(as_uuid=True), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    event = Column(String(16), nullable=False)
+    # The fire time this event is about.
+    scheduled_for = Column(DateTime(timezone=True), nullable=True)
+    occurred_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=text("now()"),
+    )
+    # occurred_at in the user's timezone: "HH:MM" and weekday 0=Mon..6=Sun.
+    local_time = Column(String(5), nullable=True)
+    weekday = Column(SmallInteger, nullable=True)

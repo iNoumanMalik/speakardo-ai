@@ -38,11 +38,15 @@ class AnthropicProvider(BaseLLMProvider):
 
         model_id = model or self.model
         try:
+            # anthropic SDK 1.x removed `temperature` from create(); it is still an
+            # API field, so it goes through extra_body. The default model
+            # (claude-haiku-4-5) accepts it; Opus 4.7 and later reject any sampling
+            # parameter, so drop this if ANTHROPIC_MODEL moves to one of those.
             response = await self._client.messages.create(
                 model=model_id,
                 max_tokens=4096,
-                temperature=temperature,
                 messages=[{"role": "user", "content": prompt}],
+                extra_body={"temperature": temperature},
             )
         except Exception as exc:
             status = getattr(exc, "status_code", None)

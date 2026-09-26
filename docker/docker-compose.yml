@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15
+    # Postgres 16 with the pgvector extension (Module 8 memory search).
+    image: pgvector/pgvector:pg16
     container_name: ai_reminder_db
     environment:
       POSTGRES_USER: user
@@ -11,8 +12,17 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # New volume name: the old postgres_data volume was created by postgres:15,
+      # and Postgres 16 cannot open a data directory from another major version.
+      - postgres16_data:/var/lib/postgresql/data
+      # Runs once, when the volume is first initialised (creates ai_reminder_test).
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d ai_reminder"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     restart: always
 
 volumes:
-  postgres_data:
+  postgres16_data:

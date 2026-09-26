@@ -4,30 +4,24 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 import models
-from database import Base
 from services.reminder_state import clear_delivery_history
 from services.scheduler import _utcnow, delivery_dedupe_key
 
 
 @pytest.fixture()
-def db_session():
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(bind=engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
+def db_session(db_session):
+    """Postgres session from conftest.py, plus one user: yields (session, user)."""
     user = models.User(
         id=uuid4(),
         email="snooze@example.com",
         password="hashed",
     )
-    session.add(user)
-    session.commit()
-    yield session, user
-    session.close()
+    db_session.add(user)
+    db_session.commit()
+    return db_session, user
 
 
 def test_snooze_clears_delivery_attempts(db_session):

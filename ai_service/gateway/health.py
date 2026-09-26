@@ -4,7 +4,7 @@ import time
 from typing import Any, Optional
 
 from .exceptions import ProviderError
-from .factory import parse_fallback_chain
+from .factory import memory_safe_provider_names, parse_fallback_chain
 from .registry import DEFAULT_MODELS, build_provider, build_providers_from_chain
 from .types import ProviderName
 
@@ -52,6 +52,7 @@ async def build_ai_health_report(*, probe: bool = False) -> dict[str, Any]:
     chain_set = {n.value for n in chain}
     active = build_providers_from_chain(chain)
     active_names = {p.name.value for p in active}
+    safe_names = memory_safe_provider_names()
 
     router_ready = False
     router_error: Optional[str] = None
@@ -115,5 +116,10 @@ async def build_ai_health_report(*, probe: bool = False) -> dict[str, Any]:
         "active_count": active_count,
         "probe_enabled": probe,
         "probe_timeout_seconds": PROBE_TIMEOUT_SECONDS if probe else None,
+        # Providers allowed for calls that carry memories or chat history.
+        "memory_safe_providers": [
+            {"name": n.value, "configured": build_provider(n).is_configured()}
+            for n in safe_names
+        ],
         "providers": provider_rows,
     }
