@@ -422,6 +422,8 @@ Future multilingual support
 
 Full design: `docs/Project/Speakardo Module 8 - AI Memory System Design.md` 
 
+Vision, research review and roadmap: `docs/Project/Speakardo Module 8 - Memory Blueprint.pdf` 
+
 ## **Goal** 
 
 Speakardo remembers what users tell it, answers questions from that memory, and uses it to set better reminders, while the user can always see, edit and delete what is kept. 
@@ -484,7 +486,7 @@ View, explain source, edit, forget one, forget a category, forget everything, pa
 
 ## **Milestones** 
 
-8.0 Foundations → 8.1 Talk and remember → 8.2 Memory screen and privacy → 8.3 People and dates → 8.4 Background learning → 8B Habits 
+8.0 Foundations (incl. reminder event logging for later habit learning) → 8.1 Talk and remember → 8.2 Memory screen and privacy → 8.3 People and dates → 8.4 Background learning → 8B Habits 
 
 # **Module 9: Calendar Integration** 
 

@@ -8,6 +8,7 @@
 | Replaces | SRS Module 8 (the SRS now points here for details) |
 | Inputs | SRS v1.1, PRD, Roadmap, Notion "Speakardo Intelligence Core" pages 01–05, current codebase (Modules 1–4 done) |
 | Living doc | https://claude.ai/code/artifact/a4392161-45ef-4201-978c-c096d52af734 |
+| Companion | `Speakardo Module 8 - Memory Blueprint.pdf` / `.md` (vision, research review, roadmap) |
 
 ---
 
@@ -129,7 +130,7 @@ Prerequisites: Docker image `pgvector/pgvector:pg15`; `CREATE EXTENSION vector` 
 | value | jsonb | Structured value: `{"month":6,"day":15}` |
 | source | enum | `user_explicit`, `conversation`, `reminder`, `onboarding`, `manual_edit`, `behavior` (8B) |
 | source_message_id | uuid, null | FK conversation_messages — powers "You told me on Sep 12" |
-| confidence | real 0–1 | 1.0 when stated directly |
+| confidence | real 0–1 | Rule-based, never LLM self-reported: 1.0 stated, 0.8 clearly implied, ≤ 0.6 LLM-inferred; habits computed from repetitions |
 | importance | real 0–1 | Birthday ≈ 0.9, favourite coffee ≈ 0.3 |
 | sensitivity | enum | `normal`, `private`, `sensitive` |
 | status | enum | `active`, `pending_confirmation`, `superseded`, `deleted` |
@@ -147,6 +148,7 @@ Indexes: `(user_id, status)`, `(user_id, person_id)`, `(user_id, key)`, ivfflat 
 - **`conversation_messages`**: `id, user_id, session_id, role, content, intent, created_at`; retention default 90 days, user-configurable.
 - **`memory_events`** (audit): `id, memory_id, user_id, action (created|updated|used|confirmed|rejected|deleted), actor (user|system), detail jsonb, created_at`.
 - **`memory_settings`** (or columns on `users`): `memory_enabled`, `learn_from_chat`, `sensitive_memory_opt_in`, `chat_retention_days`.
+- **`reminder_events`** (from 8.0): `id, reminder_id, user_id, event (created|fired|snoozed|completed|dismissed|edited|deleted), scheduled_for, occurred_at, local_time, weekday`. Raw log that 8B habit mining depends on — start collecting now, because patterns need weeks of history.
 - **`reminders.memory_id`** (new nullable FK): links reminders created from a memory (e.g. yearly birthday reminder).
 
 Sensitive memory content is encrypted at the application level (AES-GCM, key outside the database).
@@ -249,6 +251,8 @@ Engineering rules:
 
 Build notes: parser receives `user_context` (people + aliases, time preferences) so Layer 1 can match "Ammi" without an LLM; `important_date` stores `{month, day, year?}` and a daily job looks 7 days ahead (max 1 suggestion/day, quiet hours respected); reminders created from a memory keep `memory_id`.
 
+Proactive guardrails: at most 1 proactive suggestion per day, quiet hours respected, a suggestion type stops after 3 dismissals, existing reminders never changed without permission. Context (time, place, activity) is computed per request and never stored as snapshots.
+
 ---
 
 ## 11. App experience (Flutter)
@@ -314,12 +318,12 @@ Sizes are rough, for one developer part-time.
 
 | # | Milestone | Scope | Done when | Size |
 | --- | --- | --- | --- | --- |
-| 8.0 | Foundations | pgvector image; Postgres for dev/tests; `conversation_messages` + `/chat/history`; `embed()` in gateway; provider allowlist | Chat survives app restart; tests pass on Postgres | 1 wk |
+| 8.0 | Foundations | pgvector image; Postgres for dev/tests; `conversation_messages` + `/chat/history`; `embed()` in gateway; provider allowlist; `reminder_events` logging | Chat survives app restart; tests pass on Postgres | 1 wk |
 | 8.1 | Talk and remember | Turn Router; `memories`, `memory_events`, settings; save policy; exact + semantic retrieval; reply generation; chat chips; first 100 eval cases | "Remember X", "What's X?", "Forget X" work with Undo | 2–3 wk |
 | 8.2 | Memory screen + privacy | Rebuilt screen (About you, Privacy); detail/edit/delete; delete by category/all; export; toggles; sensitive encryption | Every privacy control works from chat and app | 2 wk |
 | 8.3 | People and dates | `people` + aliases; relationship extraction; `important_date`; parser `user_context`; yearly reminder offers; upcoming-dates job; onboarding questions | "Remind me to call Ammi on her birthday" works in one message | 2 wk |
 | 8.4 | Background learning | Background extraction; contradictions/versioning; merging; expiry; 150+ eval cases in CI | Auto-saved memories corrected/deleted < 5% | 1–2 wk |
-| 8B | Habits | Flutter event tracking; `behavioral_events`, `habits`; nightly mining; Patterns UI; Level 1 suggestions | "You usually go to the gym around 6 PM" confirmed by users | 4–5 wk |
+| 8B | Habits | Flutter event tracking; `habits` table; nightly mining from `reminder_events` (min 4 occurrences over 2+ weeks, low time variance, user confirms); Patterns UI; Level 1 suggestions | "You usually go to the gym around 6 PM" confirmed by users | 4–5 wk |
 
 Ship 8.1 to 10–20 real users before polishing 8.2.
 
