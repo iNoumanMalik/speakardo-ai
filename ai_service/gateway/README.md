@@ -55,6 +55,8 @@ result = await router.generate(prompt, personal_data=True)
 
 These calls only reach providers listed in `MEMORY_SAFE_PROVIDERS` (default `openai,anthropic`), in that order, and never fall back to any other provider. The list is built independently of `AI_FALLBACK_CHAIN`. If none of the listed providers is configured, `NoSafeProviderError` is raised (a subclass of `AllProvidersFailedError`) and nothing is sent. A value with no valid provider names allows none.
 
+Gemini, DeepSeek, Groq and OpenRouter can be listed for development with test data (`UNTRUSTED_MEMORY_PROVIDERS` in `factory.py`); the router then logs `event=ai_memory_providers_untrusted` at startup. Ollama runs locally and is not flagged.
+
 ## Embeddings
 
 ```python
@@ -63,9 +65,9 @@ from ai_service.gateway.embeddings import embed
 vectors = await embed(["Sara's birthday is June 15"])  # list of 1536-float lists
 ```
 
-- One provider, `openai` with `text-embedding-3-small` at 1536 dimensions (`EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`). There is no fallback, because vectors from different models can't be compared.
+- One provider at a time, chosen by `EMBEDDING_PROVIDER`: `openai` (`text-embedding-3-small`, the default) or `gemini` (`gemini-embedding-001`, free tier, for development). Both produce 1536 dimensions (`EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`). There is no fallback, because vectors from different models can't be compared.
 - `get_default_embedder()` refuses to start unless the embedding provider is in `MEMORY_SAFE_PROVIDERS`, since embedded text is always personal data.
-- Batches of up to 256 texts, with retries and timeout from `AI_MAX_RETRIES_PER_PROVIDER` / `AI_REQUEST_TIMEOUT_SECONDS`. Every vector's length is checked.
+- Batches of up to 256 texts (OpenAI) or 100 (Gemini), with retries and timeout from `AI_MAX_RETRIES_PER_PROVIDER` / `AI_REQUEST_TIMEOUT_SECONDS`. Every vector's length is checked. Gemini vectors are normalised to unit length.
 - Tests use `gateway/fakes.py` `FakeEmbeddingProvider` (deterministic, offline): `await embed(texts, embedder=FakeEmbeddingProvider())`.
 
 ## Add a new provider

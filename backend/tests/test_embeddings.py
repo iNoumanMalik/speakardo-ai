@@ -1,4 +1,4 @@
-"""Embeddings: OpenAI text-embedding-3-small at 1536 dimensions, fully mocked."""
+"""Embeddings: OpenAI and Gemini at 1536 dimensions, fully mocked."""
 
 import asyncio
 import math
@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 from ai_service.gateway.embeddings import (
     EMBEDDING_DIMENSIONS,
     MAX_BATCH_SIZE,
+    GeminiEmbeddingProvider,
     OpenAIEmbeddingProvider,
     embed,
 )
@@ -141,7 +142,7 @@ def test_default_embedder(fresh_embedder):
     "name, value",
     [
         ("EMBEDDING_DIMENSIONS", "768"),
-        ("EMBEDDING_PROVIDER", "gemini"),
+        ("EMBEDDING_PROVIDER", "groq"),  # no embedding support
         ("MEMORY_SAFE_PROVIDERS", "anthropic"),
     ],
 )
@@ -149,3 +150,84 @@ def test_factory_refuses_unsafe_or_mismatched_config(fresh_embedder, name, value
     fresh_embedder.setenv(name, value)
     with pytest.raises(RuntimeError):
         get_default_embedder()
+
+
+def test_gemini_embedder_needs_gemini_on_the_allowlist(fresh_embedder):
+    fresh_embedder.setenv("EMBEDDING_PROVIDER", "gemini")
+    with pytest.raises(RuntimeError, match="MEMORY_SAFE_PROVIDERS"):
+        get_default_embedder()
+
+
+def test_gemini_embedder_is_built_and_flagged_as_development_only(fresh_embedder, caplog):
+    fresh_embedder.setenv("EMBEDDING_PROVIDER", "gemini")
+    fresh_embedder.setenv("MEMORY_SAFE_PROVIDERS", "gemini,openai")
+    fresh_embedder.setenv("GEMINI_API_KEY", "test-gemini-key")
+
+    with caplog.at_level("WARNING", logger="ai_service.gateway.factory"):
+        embedder = get_default_embedder()
+
+    assert isinstance(embedder, GeminiEmbeddingProvider)
+    assert (embedder.model, embedder.dimensions) == ("gemini-embedding-001", 1536)
+    assert "event=ai_memory_providers_untrusted providers=gemini" in caplog.text
+
+
+# --- Gemini ----------------------------------------------------------------------
+
+
+class _GeminiError(Exception):
+    def __init__(self, code):
+        super().__init__(f"gemini error {code}")
+        self.code = code
+
+
+def _gemini_embedder(embed_content):
+    embedder = GeminiEmbeddingProvider(
+        api_key="test-key", max_retries=2, retry_backoff_seconds=0
+    )
+    embedder._client = SimpleNamespace(
+        aio=SimpleNamespace(models=SimpleNamespace(embed_content=embed_content))
+    )
+    return embedder
+
+
+def _gemini_response(texts, value=2.0, dims=EMBEDDING_DIMENSIONS):
+    return SimpleNamespace(embeddings=[SimpleNamespace(values=[value] * dims) for _ in texts])
+
+
+def test_gemini_embedder_requests_1536_dimensions_and_normalises():
+    embed_content = AsyncMock(side_effect=lambda **kw: _gemini_response(kw["contents"]))
+
+    (vector,) = _run(_gemini_embedder(embed_content).embed(["Sara's birthday is June 15"]))
+
+    kwargs = embed_content.call_args.kwargs
+    assert kwargs["model"] == "gemini-embedding-001"
+    assert kwargs["config"] == {"output_dimensionality": EMBEDDING_DIMENSIONS}
+    assert len(vector) == EMBEDDING_DIMENSIONS
+    assert math.isclose(sum(v * v for v in vector), 1.0)
+
+
+def test_gemini_embedder_batches_100_at_a_time():
+    embed_content = AsyncMock(side_effect=lambda **kw: _gemini_response(kw["contents"]))
+
+    vectors = _run(_gemini_embedder(embed_content).embed([f"m{i}" for i in range(150)]))
+
+    assert [len(c.kwargs["contents"]) for c in embed_content.call_args_list] == [100, 50]
+    assert len(vectors) == 150
+
+
+@pytest.mark.parametrize(
+    "code, error, calls",
+    [
+        (403, ProviderAuthError, 1),  # bad key: not retried
+        (400, ProviderError, 1),  # bad request: not retried
+        (429, ProviderRateLimitError, 2),  # rate limited: retried
+        (503, ProviderError, 2),  # server error: retried
+    ],
+)
+def test_gemini_errors_are_mapped(code, error, calls):
+    embed_content = AsyncMock(side_effect=_GeminiError(code))
+
+    with pytest.raises(error):
+        _run(_gemini_embedder(embed_content).embed(["x"]))
+
+    assert embed_content.call_count == calls

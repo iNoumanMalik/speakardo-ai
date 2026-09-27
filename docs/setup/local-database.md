@@ -79,12 +79,21 @@ If Postgres isn't running, the database tests stop with a message telling you to
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `TEST_DATABASE_URL` | `postgresql+psycopg2://user:password@localhost:5432/ai_reminder_test` | Database the test suite migrates and wipes |
-| `MEMORY_SAFE_PROVIDERS` | `openai,anthropic` | The only AI providers allowed to receive memories or chat history. A value with no valid names allows none |
-| `EMBEDDING_PROVIDER` | `openai` | Only `openai` is supported |
-| `EMBEDDING_MODEL` | `text-embedding-3-small` | OpenAI embedding model |
+| `MEMORY_SAFE_PROVIDERS` | `openai,anthropic` | The only AI providers allowed to receive memories or chat history. A value with no valid names allows none. Development uses `gemini,openai,anthropic` (see below) |
+| `EMBEDDING_PROVIDER` | `openai` | `openai` or `gemini`. Must also be listed in `MEMORY_SAFE_PROVIDERS` |
+| `EMBEDDING_MODEL` | `text-embedding-3-small` (openai) / `gemini-embedding-001` (gemini) | Embedding model for the chosen provider |
 | `EMBEDDING_DIMENSIONS` | `1536` | Must stay 1536 (the size of the memory vector column) |
 
 `ANTHROPIC_MODEL` should be a current model ID such as `claude-haiku-4-5`; older Claude 3.5 IDs are outdated.
+
+**Free development setup.** To build memory features without paid API credits, add to `.env`:
+
+```bash
+MEMORY_SAFE_PROVIDERS=gemini,openai,anthropic
+EMBEDDING_PROVIDER=gemini
+```
+
+Only your `GEMINI_API_KEY` needs to work. Google may use free-tier Gemini data, so use test data only. The server logs `event=ai_memory_providers_untrusted` at startup as a reminder. Remove `gemini` from the list before real users.
 
 ## 6. Supabase (shared database)
 

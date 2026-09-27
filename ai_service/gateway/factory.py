@@ -6,8 +6,10 @@ from dotenv import load_dotenv
 
 from .embeddings import (
     DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_GEMINI_EMBEDDING_MODEL,
     EMBEDDING_DIMENSIONS,
     EmbeddingProvider,
+    GeminiEmbeddingProvider,
     OpenAIEmbeddingProvider,
 )
 from .registry import _env, build_providers_from_chain
@@ -20,6 +22,18 @@ logger = logging.getLogger(__name__)
 # Providers allowed to see memories or chat history when MEMORY_SAFE_PROVIDERS is
 # unset (design.md §9: API terms say they don't train on or retain API data).
 DEFAULT_MEMORY_SAFE_PROVIDERS = (ProviderName.OPENAI, ProviderName.ANTHROPIC)
+
+# Allowed in MEMORY_SAFE_PROVIDERS for development with test data, but their free
+# or default API terms don't rule out training on or keeping the data. Listing one
+# logs a warning at startup. Ollama runs locally, so it is not on this list.
+UNTRUSTED_MEMORY_PROVIDERS = frozenset(
+    {ProviderName.GEMINI, ProviderName.DEEPSEEK, ProviderName.GROQ, ProviderName.OPENROUTER}
+)
+
+EMBEDDING_PROVIDERS = {
+    ProviderName.OPENAI: (OpenAIEmbeddingProvider, "OPENAI_API_KEY", DEFAULT_EMBEDDING_MODEL),
+    ProviderName.GEMINI: (GeminiEmbeddingProvider, "GEMINI_API_KEY", DEFAULT_GEMINI_EMBEDDING_MODEL),
+}
 
 
 def parse_fallback_chain(raw: str | None) -> list[ProviderName]:
@@ -74,6 +88,18 @@ def memory_safe_provider_names() -> list[ProviderName]:
     )
 
 
+def warn_if_untrusted_memory_providers(names: list[ProviderName]) -> list[ProviderName]:
+    """Log a warning when personal data may reach a development-only provider."""
+    untrusted = [n for n in names if n in UNTRUSTED_MEMORY_PROVIDERS]
+    if untrusted:
+        logger.warning(
+            "event=ai_memory_providers_untrusted providers=%s "
+            "note=development_only_use_test_data_never_real_users",
+            ",".join(n.value for n in untrusted),
+        )
+    return untrusted
+
+
 @lru_cache(maxsize=1)
 def get_default_router() -> AIRouter:
     chain = parse_fallback_chain(os.getenv("AI_FALLBACK_CHAIN"))
@@ -86,6 +112,7 @@ def get_default_router() -> AIRouter:
     # Built independently of AI_FALLBACK_CHAIN: a safe provider need not be in it.
     safe_names = memory_safe_provider_names()
     safe_providers = build_providers_from_chain(safe_names)
+    warn_if_untrusted_memory_providers([p.name for p in safe_providers])
     config = RouterConfig(
         fallback_chain=chain,
         timeout_seconds=float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "60")),
@@ -107,11 +134,14 @@ def get_default_router() -> AIRouter:
 
 @lru_cache(maxsize=1)
 def get_default_embedder() -> EmbeddingProvider:
-    provider = (_env("EMBEDDING_PROVIDER") or ProviderName.OPENAI.value).lower()
-    if provider != ProviderName.OPENAI.value:
-        raise RuntimeError(
-            f"EMBEDDING_PROVIDER={provider!r} is not supported; only 'openai' is."
-        )
+    raw = (_env("EMBEDDING_PROVIDER") or ProviderName.OPENAI.value).lower()
+    try:
+        name = ProviderName(raw)
+    except ValueError:
+        name = None
+    if name not in EMBEDDING_PROVIDERS:
+        supported = ", ".join(n.value for n in EMBEDDING_PROVIDERS)
+        raise RuntimeError(f"EMBEDDING_PROVIDER={raw!r} is not supported; use one of: {supported}.")
     dimensions = int(_env("EMBEDDING_DIMENSIONS") or EMBEDDING_DIMENSIONS)
     if dimensions != EMBEDDING_DIMENSIONS:
         raise RuntimeError(
@@ -119,18 +149,24 @@ def get_default_embedder() -> EmbeddingProvider:
             f"memory vector column, got {dimensions}."
         )
     # Embedded text is always personal data.
-    if ProviderName.OPENAI not in memory_safe_provider_names():
+    if name not in memory_safe_provider_names():
         raise RuntimeError(
-            "Embeddings carry personal data: add 'openai' to MEMORY_SAFE_PROVIDERS."
+            f"Embeddings carry personal data: add '{name.value}' to MEMORY_SAFE_PROVIDERS."
         )
-    embedder = OpenAIEmbeddingProvider(
-        api_key=_env("OPENAI_API_KEY"),
-        base_url=_env("OPENAI_BASE_URL"),
-        model=_env("EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODEL,
+    warn_if_untrusted_memory_providers([name])
+
+    provider_cls, key_env, default_model = EMBEDDING_PROVIDERS[name]
+    kwargs = {}
+    if name == ProviderName.OPENAI:
+        kwargs["base_url"] = _env("OPENAI_BASE_URL")
+    embedder = provider_cls(
+        api_key=_env(key_env),
+        model=_env("EMBEDDING_MODEL") or default_model,
         dimensions=dimensions,
         timeout_seconds=float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "60")),
         max_retries=int(os.getenv("AI_MAX_RETRIES_PER_PROVIDER", "2")),
         retry_backoff_seconds=float(os.getenv("AI_RETRY_BACKOFF_SECONDS", "0.5")),
+        **kwargs,
     )
     logger.info(
         "event=ai_embedder_configured provider=%s model=%s dimensions=%s configured=%s",

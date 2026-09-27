@@ -131,3 +131,31 @@ def test_default_router_builds_safe_providers_outside_the_fallback_chain(monkeyp
         assert [p.name for p in router.safe_providers] == [P.ANTHROPIC]
     finally:
         get_default_router.cache_clear()
+
+
+def test_router_warns_when_a_development_only_provider_is_allowed(monkeypatch, caplog):
+    monkeypatch.setenv("AI_FALLBACK_CHAIN", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.setenv("MEMORY_SAFE_PROVIDERS", "gemini,openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+    get_default_router.cache_clear()
+    try:
+        with caplog.at_level("WARNING", logger="ai_service.gateway.factory"):
+            router = get_default_router()
+        assert [p.name for p in router.safe_providers] == [P.GEMINI, P.OPENAI]
+        assert "event=ai_memory_providers_untrusted providers=gemini" in caplog.text
+    finally:
+        get_default_router.cache_clear()
+
+
+def test_trusted_providers_log_no_warning(monkeypatch, caplog):
+    monkeypatch.setenv("AI_FALLBACK_CHAIN", "openai")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
+    monkeypatch.delenv("MEMORY_SAFE_PROVIDERS", raising=False)
+    get_default_router.cache_clear()
+    try:
+        with caplog.at_level("WARNING", logger="ai_service.gateway.factory"):
+            get_default_router()
+        assert "ai_memory_providers_untrusted" not in caplog.text
+    finally:
+        get_default_router.cache_clear()

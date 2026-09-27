@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import time
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from .exceptions import ProviderAuthError, ProviderError, ProviderTimeoutError
+from .exceptions import (
+    ProviderAuthError,
+    ProviderError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
+)
 from .types import ProviderName
 
 logger = logging.getLogger(__name__)
@@ -21,6 +27,7 @@ logger = logging.getLogger(__name__)
 # Shared with the vector(1536) column that stores memory embeddings (8.1).
 EMBEDDING_DIMENSIONS = 1536
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-001"
 MAX_BATCH_SIZE = 256
 
 
@@ -28,6 +35,8 @@ class EmbeddingProvider(ABC):
     """Turns texts into fixed-size vectors, with timeout, retries and validation."""
 
     name: ProviderName
+    # Most texts sent in one API call.
+    max_batch_size: int = MAX_BATCH_SIZE
 
     def __init__(
         self,
@@ -49,7 +58,7 @@ class EmbeddingProvider(ABC):
 
     @abstractmethod
     async def _embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """One API call for at most MAX_BATCH_SIZE texts, results in input order."""
+        """One API call for at most max_batch_size texts, results in input order."""
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
@@ -59,8 +68,8 @@ class EmbeddingProvider(ABC):
 
         started = time.perf_counter()
         vectors: list[list[float]] = []
-        for start in range(0, len(texts), MAX_BATCH_SIZE):
-            batch = texts[start : start + MAX_BATCH_SIZE]
+        for start in range(0, len(texts), self.max_batch_size):
+            batch = texts[start : start + self.max_batch_size]
             result = await self._embed_batch_with_retries(batch)
             self._validate(batch, result)
             vectors.extend(result)
@@ -149,6 +158,68 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         except Exception as exc:
             raise _map_openai_error(exc, self.name) from exc
         return [list(item.embedding) for item in sorted(response.data, key=lambda d: d.index)]
+
+
+def _map_gemini_error(exc: Exception) -> ProviderError:
+    """google-genai APIError carries the HTTP status in ``code``."""
+    code = getattr(exc, "code", None)
+    msg = str(exc)
+    if code in (401, 403):
+        return ProviderAuthError(ProviderName.GEMINI.value, msg)
+    if code == 429:
+        return ProviderRateLimitError(ProviderName.GEMINI.value, msg)
+    retryable = code is None or code >= 500
+    return ProviderError(
+        msg, provider=ProviderName.GEMINI.value, retryable=retryable, status_code=code, cause=exc
+    )
+
+
+class GeminiEmbeddingProvider(EmbeddingProvider):
+    """gemini-embedding-001 truncated to 1536 dimensions.
+
+    Free tier, for development: Google may use free-tier API data to improve its
+    products, so only use it with test data (see factory.UNTRUSTED_MEMORY_PROVIDERS).
+    """
+
+    name = ProviderName.GEMINI
+    max_batch_size = 100  # Gemini's per-request limit
+
+    def __init__(
+        self,
+        *,
+        api_key: Optional[str],
+        model: str = DEFAULT_GEMINI_EMBEDDING_MODEL,
+        **kwargs,
+    ) -> None:
+        super().__init__(model=model, **kwargs)
+        self._client = None
+        if api_key:
+            from google import genai
+
+            self._client = genai.Client(api_key=api_key)
+
+    def is_configured(self) -> bool:
+        return self._client is not None
+
+    async def _embed_batch(self, texts: list[str]) -> list[list[float]]:
+        if self._client is None:
+            raise ProviderAuthError(self.name.value, "GEMINI_API_KEY is not set")
+        try:
+            response = await self._client.aio.models.embed_content(
+                model=self.model,
+                contents=texts,
+                config={"output_dimensionality": self.dimensions},
+            )
+        except Exception as exc:
+            raise _map_gemini_error(exc) from exc
+        # Below its native 3072 dimensions Gemini returns unnormalised vectors;
+        # normalise so they behave like OpenAI's for cosine and inner product.
+        return [_unit(list(e.values)) for e in response.embeddings]
+
+
+def _unit(vector: list[float]) -> list[float]:
+    norm = math.sqrt(sum(v * v for v in vector))
+    return [v / norm for v in vector] if norm else vector
 
 
 async def embed(

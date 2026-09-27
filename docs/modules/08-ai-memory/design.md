@@ -137,6 +137,7 @@ Prerequisites: Docker image `pgvector/pgvector:pg16` (Homebrew's pgvector formul
 | superseded_by | uuid, null | Version chain |
 | valid_from, valid_until | timestamptz | Temporary facts ("in Lahore this week") |
 | embedding | vector(1536), null | Null for sensitive memories |
+| embedding_model | text, null | Model that produced `embedding` (e.g. `gemini-embedding-001`). Vectors from different models can't be compared, so a change of `EMBEDDING_PROVIDER` means re-embedding rows with another value |
 | use_count, last_used_at | int, timestamptz | Ranking + "Used" chip |
 | created_at, updated_at | timestamptz | |
 
@@ -353,7 +354,8 @@ Ship 8.1 to 10–20 real users before polishing 8.2.
 ## 15. Open decisions
 
 - [ ] **Free vs Pro** — Recommendation: core memory free and unlimited; learned habits, predictive suggestions and calendar context in Pro.
-- [x] **Provider allowlist** — Decided 2026-09-26: `MEMORY_SAFE_PROVIDERS=openai,anthropic` (the default). Memory-bearing calls pass `personal_data=True` and never fall back beyond this list; embeddings (OpenAI) require `openai` on it. Gemini, DeepSeek, Groq, Ollama and OpenRouter stay fallbacks for memory-free reminder parsing.
+- [x] **Provider allowlist** — Decided 2026-09-26: `MEMORY_SAFE_PROVIDERS=openai,anthropic` (the default). Memory-bearing calls pass `personal_data=True` and never fall back beyond this list; the embedding provider must be on it. Gemini, DeepSeek, Groq, Ollama and OpenRouter stay fallbacks for memory-free reminder parsing.
+  - **Development override (2026-09-27):** while building, the dev `.env` sets `MEMORY_SAFE_PROVIDERS=gemini,openai,anthropic` and `EMBEDDING_PROVIDER=gemini` (`gemini-embedding-001` at 1536 dimensions) to use Gemini's free tier. Free-tier data may be used by Google, so this is for test data only; the server logs `event=ai_memory_providers_untrusted` whenever a development-only provider is allowed. **Before real users:** remove `gemini` from the list and re-embed memories with the production embedding model.
 - [x] **Chat retention** — Decided 2026-09-26: 90-day default; users can pick 30 days / 90 days / 1 year / forever in Settings. Built before 8.1 (`users.chat_retention_days`, daily cleanup job).
 - [x] **Health memories in 8A** — Decided 2026-09-26: not in 8.1. Sensitive facts (health, finance, religion, …) arrive in 8.2 together with encryption and the opt-in toggle, so they are never stored unprotected.
 - [ ] **People table timing** — keep in 8A (recommended) or defer?

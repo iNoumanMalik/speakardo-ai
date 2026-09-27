@@ -67,6 +67,7 @@ flutter analyze
 - If `DATABASE_URL` is unset, the backend falls back to SQLite (`backend/ai_reminder.db`). Module 8 needs Postgres with pgvector; never build memory features on SQLite.
 - Tests use `TEST_DATABASE_URL` (default: the Docker `ai_reminder_test` database). `tests/conftest.py` sets it after `env_config` loads `.env`, and refuses any target that isn't a local `*_test` database.
 - `MEMORY_SAFE_PROVIDERS` (default `openai,anthropic`) lists the only providers allowed to receive memories or chat history. Pass `personal_data=True` to `AIRouter.generate` for those calls; embeddings (`ai_service/gateway/embeddings.py`) always require the embedding provider to be on this list.
+- **Development uses Gemini's free tier for memory work**: the dev `.env` sets `MEMORY_SAFE_PROVIDERS=gemini,openai,anthropic` and `EMBEDDING_PROVIDER=gemini`. Test data only; the startup warning `event=ai_memory_providers_untrusted` is expected in dev and must not appear in production.
 - LLM providers are set by `AI_FALLBACK_CHAIN` plus `*_API_KEY` variables.
 - **Never print, copy or commit secrets:** `.env` files, `backend/firebase-service-account.json`, `google-services.json`, `GoogleService-Info.plist`.
 

@@ -3,6 +3,7 @@
 from .embeddings import (
     EMBEDDING_DIMENSIONS,
     EmbeddingProvider,
+    GeminiEmbeddingProvider,
     OpenAIEmbeddingProvider,
     embed,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "AllProvidersFailedError",
     "EMBEDDING_DIMENSIONS",
     "EmbeddingProvider",
+    "GeminiEmbeddingProvider",
     "GenerateResult",
     "NoSafeProviderError",
     "OpenAIEmbeddingProvider",
