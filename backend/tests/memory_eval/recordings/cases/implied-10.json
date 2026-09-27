@@ -1,6 +1,6 @@
 {
   "case": "implied-10",
-  "recorded_at": "2026-09-27T11:29:57+00:00",
+  "recorded_at": "2026-09-27T13:41:36+00:00",
   "embedding_model": "gemini-embedding-001",
   "calls": [
     {
@@ -8,7 +8,14 @@
       "personal_data": true,
       "provider": "groq",
       "model": "openai/gpt-oss-120b",
-      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your lunch was biryani today.\",\"kind\":\"event\",\"category\":\"personal\",\"key\":null,\"subject\":null,\"value\":{\"text\":\"biryani\"},\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}],\"query\":null,\"forget\":null}"
+      "text": "{\"intent\":\"chat\",\"reminder\":null,\"memories\":[],\"query\":null,\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"Sounds delicious! If you ever want me to remember your favorite meals or set a reminder for a future lunch, just let me know.\",\"used\":[]}"
     }
   ]
 }

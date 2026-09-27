@@ -1,6 +1,6 @@
 {
   "case": "sensitive-08",
-  "recorded_at": "2026-09-27T11:26:28+00:00",
+  "recorded_at": "2026-09-27T11:59:11+00:00",
   "embedding_model": "gemini-embedding-001",
   "calls": [
     {
@@ -8,14 +8,7 @@
       "personal_data": true,
       "provider": "groq",
       "model": "openai/gpt-oss-120b",
-      "text": "{\"intent\":\"chat\",\"reminder\":null,\"memories\":[{\"content\":\"Your religion is Muslim and you pray five times a day\",\"kind\":\"fact\",\"category\":\"personal\",\"key\":null,\"subject\":null,\"value\":null,\"basis\":\"stated\",\"sensitive\":true,\"is_instruction\":false,\"temporary_days\":null}],\"query\":null,\"forget\":null}"
-    },
-    {
-      "kind": "reply",
-      "personal_data": true,
-      "provider": "groq",
-      "model": "openai/gpt-oss-120b",
-      "text": "{\"reply\":\"Thanks for sharing! If you'd like, I can help set reminders for your prayer times.\",\"used\":[]}"
+      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your religion is Islam and you pray five times a day\",\"kind\":\"fact\",\"category\":\"personal\",\"key\":null,\"subject\":null,\"value\":null,\"basis\":\"stated\",\"sensitive\":true,\"is_instruction\":false,\"temporary_days\":null}],\"query\":null,\"forget\":null}"
     }
   ]
 }

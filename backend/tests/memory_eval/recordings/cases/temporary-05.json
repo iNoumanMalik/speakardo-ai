@@ -1,6 +1,6 @@
 {
   "case": "temporary-05",
-  "recorded_at": "2026-09-27T11:25:06+00:00",
+  "recorded_at": "2026-09-27T11:58:00+00:00",
   "embedding_model": "gemini-embedding-001",
   "calls": [
     {
@@ -8,7 +8,7 @@
       "personal_data": true,
       "provider": "groq",
       "model": "openai/gpt-oss-120b",
-      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your trip to Dubai lasts two weeks\",\"kind\":\"event\",\"category\":\"places\",\"key\":null,\"subject\":null,\"value\":{\"text\":\"Dubai for two weeks\"},\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}],\"query\":null,\"forget\":null}"
+      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your travel to Dubai will last two weeks.\",\"kind\":\"event\",\"category\":\"places\",\"key\":null,\"subject\":null,\"value\":{\"text\":\"travel to Dubai\"},\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":14}],\"query\":null,\"forget\":null}"
     }
   ]
 }

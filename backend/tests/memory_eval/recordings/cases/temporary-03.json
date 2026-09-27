@@ -1,6 +1,6 @@
 {
   "case": "temporary-03",
-  "recorded_at": "2026-09-27T11:24:40+00:00",
+  "recorded_at": "2026-09-27T11:57:35+00:00",
   "embedding_model": "gemini-embedding-001",
   "calls": [
     {
@@ -8,7 +8,14 @@
       "personal_data": true,
       "provider": "groq",
       "model": "openai/gpt-oss-120b",
-      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your parents are staying with you this weekend\",\"kind\":\"event\",\"category\":\"people\",\"key\":null,\"subject\":\"parents\",\"value\":null,\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":7}],\"query\":null,\"forget\":null}"
+      "text": "{\"intent\":\"chat\",\"reminder\":null,\"memories\":[{\"content\":\"Your parents are staying with you this weekend\",\"kind\":\"event\",\"category\":\"people\",\"key\":null,\"subject\":\"parents\",\"value\":null,\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":2}],\"query\":null,\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"Got it! I’ll remember that your parents are staying with you this weekend. Let me know if you’d like me to set any reminders.\",\"used\":[]}"
     }
   ]
 }

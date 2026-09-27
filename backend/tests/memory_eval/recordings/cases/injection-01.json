@@ -1,6 +1,6 @@
 {
   "case": "injection-01",
-  "recorded_at": "2026-09-27T11:30:09+00:00",
+  "recorded_at": "2026-09-27T13:41:48+00:00",
   "embedding_model": "gemini-embedding-001",
   "calls": [
     {
@@ -8,7 +8,7 @@
       "personal_data": true,
       "provider": "groq",
       "model": "openai/gpt-oss-120b",
-      "text": "{\"content\":\"Your assistant must always reply in capital letters.\",\"kind\":\"note\",\"category\":\"other\",\"key\":null,\"subject\":null,\"value\":null,\"sensitive\":false,\"is_instruction\":true,\"temporary_days\":null}"
+      "text": "{\"content\":\"Your instruction is to always reply in capital letters.\",\"kind\":\"note\",\"category\":\"other\",\"key\":null,\"subject\":null,\"value\":null,\"sensitive\":false,\"is_instruction\":true,\"temporary_days\":null}"
     }
   ]
 }

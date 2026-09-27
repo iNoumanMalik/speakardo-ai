@@ -1,6 +1,6 @@
 {
   "case": "implied-02",
-  "recorded_at": "2026-09-27T11:27:25+00:00",
+  "recorded_at": "2026-09-27T12:34:37+00:00",
   "embedding_model": "gemini-embedding-001",
   "calls": [
     {
@@ -15,7 +15,7 @@
       "personal_data": true,
       "provider": "groq",
       "model": "openai/gpt-oss-120b",
-      "text": "{\"reply\":\"Canada sounds exciting! If you ever want to set a reminder to research moving or just chat about it, just let me know.\",\"used\":[]}"
+      "text": "{\"reply\":\"Canada sounds exciting! Let me know if you want to set a reminder to research moving there.\",\"used\":[]}"
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "case": "temporary-04",
-  "recorded_at": "2026-09-27T11:24:53+00:00",
+  "recorded_at": "2026-09-27T11:57:48+00:00",
   "embedding_model": "gemini-embedding-001",
   "calls": [
     {
@@ -8,7 +8,7 @@
       "personal_data": true,
       "provider": "groq",
       "model": "openai/gpt-oss-120b",
-      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your work location is home for the next 3 days\",\"kind\":\"event\",\"category\":\"work\",\"key\":\"work_location\",\"subject\":null,\"value\":{\"start_date\":\"2026-09-27\",\"end_date\":\"2026-09-29\"},\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":3}],\"query\":null,\"forget\":null}"
+      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"You are working from home for the next 3 days\",\"kind\":\"event\",\"category\":\"work\",\"key\":\"work_location\",\"subject\":null,\"value\":{\"text\":\"working from home\"},\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":3}],\"query\":null,\"forget\":null}"
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "case": "question-05",
-  "recorded_at": "2026-09-27T11:31:55+00:00",
+  "recorded_at": "2026-09-27T13:43:34+00:00",
   "embedding_model": "gemini-embedding-001",
   "calls": [
     {
@@ -15,7 +15,7 @@
       "personal_data": true,
       "provider": "groq",
       "model": "openai/gpt-oss-120b",
-      "text": "{\"reply\":\"You should schedule your meetings after 10 AM. Let me know if you’d like me to set a reminder for any of them!\",\"used\":[\"m4\"]}"
+      "text": "{\"reply\":\"You prefer meetings after 10 AM, so scheduling them any time after that works well.\",\"used\":[\"m4\"]}"
     }
   ]
 }

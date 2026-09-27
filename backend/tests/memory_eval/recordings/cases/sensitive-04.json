@@ -1,6 +1,6 @@
 {
   "case": "sensitive-04",
-  "recorded_at": "2026-09-27T11:25:42+00:00",
+  "recorded_at": "2026-09-27T11:58:35+00:00",
   "embedding_model": "gemini-embedding-001",
   "calls": [
     {
@@ -8,7 +8,7 @@
       "personal_data": true,
       "provider": "groq",
       "model": "openai/gpt-oss-120b",
-      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your salary is 250,000 a month.\",\"kind\":\"fact\",\"category\":\"finance\",\"key\":null,\"subject\":null,\"value\":{\"text\":\"250,000 a month\"},\"basis\":\"stated\",\"sensitive\":true,\"is_instruction\":false,\"temporary_days\":null}],\"query\":null,\"forget\":null}"
+      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your salary is 250,000 a month\",\"kind\":\"fact\",\"category\":\"finance\",\"key\":null,\"subject\":null,\"value\":{\"text\":\"250,000 a month\"},\"basis\":\"stated\",\"sensitive\":true,\"is_instruction\":false,\"temporary_days\":null}],\"query\":null,\"forget\":null}"
     }
   ]
 }
