@@ -1,3 +1,5 @@
+import 'memory_action.dart';
+
 class Message {
   /// Server id from /chat/history; null for messages created in this session.
   final String? id;
@@ -6,12 +8,17 @@ class Message {
   final DateTime timestamp;
   final Map<String, dynamic>? pendingReminder;
 
+  /// Memory chips under an assistant reply. Not stored in history, so they
+  /// only appear in the session where the reply arrived.
+  final List<MemoryAction> memoryActions;
+
   Message({
     this.id,
     required this.text,
     required this.isUser,
     required this.timestamp,
     this.pendingReminder,
+    this.memoryActions = const [],
   });
 
   /// A stored message from GET /chat/history. Restored messages never carry a
@@ -31,6 +38,7 @@ class Message {
     DateTime? timestamp,
     Map<String, dynamic>? pendingReminder,
     bool clearPendingReminder = false,
+    List<MemoryAction>? memoryActions,
   }) {
     return Message(
       id: id,
@@ -39,6 +47,7 @@ class Message {
       timestamp: timestamp ?? this.timestamp,
       pendingReminder:
           clearPendingReminder ? null : (pendingReminder ?? this.pendingReminder),
+      memoryActions: memoryActions ?? this.memoryActions,
     );
   }
 }

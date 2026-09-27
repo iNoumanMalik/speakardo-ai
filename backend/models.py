@@ -8,12 +8,14 @@ from sqlalchemy import (
     ForeignKey,
     Enum,
     Index,
+    Float,
     Integer,
     SmallInteger,
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from pgvector.sqlalchemy import Vector
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from datetime import datetime, timezone
 from database import Base
 import enum
@@ -77,6 +79,10 @@ class User(Base):
         default=DEFAULT_CHAT_RETENTION_DAYS,
         server_default=str(DEFAULT_CHAT_RETENTION_DAYS),
     )
+    # Memory privacy settings. memory_enabled=False saves nothing; with
+    # learn_from_chat=False only explicit "remember that ..." requests are saved.
+    memory_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    learn_from_chat = Column(Boolean, nullable=False, default=True, server_default="true")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
@@ -201,3 +207,138 @@ class ReminderEvent(Base):
     # occurred_at in the user's timezone: "HH:MM" and weekday 0=Mon..6=Sun.
     local_time = Column(String(5), nullable=True)
     weekday = Column(SmallInteger, nullable=True)
+
+
+# --- Module 8: memories ----------------------------------------------------------
+# Allowed values, mirrored by CHECK constraints (and by ai_service/memory/keys.py,
+# which validates what the AI returns; tests keep the two in sync).
+MEMORY_KINDS = ("fact", "preference", "important_date", "relationship", "note", "event")
+MEMORY_CATEGORIES = (
+    "personal", "work", "people", "health", "finance", "places", "routine", "other",
+)
+MEMORY_SOURCES = (
+    "user_explicit", "conversation", "reminder", "onboarding", "manual_edit", "behavior",
+)
+MEMORY_SENSITIVITIES = ("normal", "private", "sensitive")
+MEMORY_EVENT_ACTIONS = (
+    "created", "updated", "used", "confirmed", "rejected", "deleted", "restored",
+)
+MEMORY_EMBEDDING_DIMENSIONS = 1536  # = ai_service.gateway.embeddings.EMBEDDING_DIMENSIONS
+
+
+class MemoryStatus:
+    ACTIVE = "active"
+    PENDING_CONFIRMATION = "pending_confirmation"
+    SUPERSEDED = "superseded"
+    DELETED = "deleted"  # hidden by Forget; erased 24 hours after deleted_at
+
+    ALL = (ACTIVE, PENDING_CONFIRMATION, SUPERSEDED, DELETED)
+
+
+def _in(column: str, values: tuple) -> str:
+    return f"{column} IN ({', '.join(repr(v) for v in values)})"
+
+
+class Memory(Base):
+    """Something the user told Speakardo, in their words, plus structure for lookups."""
+
+    __tablename__ = "memories"
+    __table_args__ = (
+        CheckConstraint(_in("kind", MEMORY_KINDS), name="ck_memories_kind"),
+        CheckConstraint(_in("category", MEMORY_CATEGORIES), name="ck_memories_category"),
+        CheckConstraint(_in("source", MEMORY_SOURCES), name="ck_memories_source"),
+        CheckConstraint(_in("sensitivity", MEMORY_SENSITIVITIES), name="ck_memories_sensitivity"),
+        CheckConstraint(_in("status", MemoryStatus.ALL), name="ck_memories_status"),
+        Index("ix_memories_user_status", "user_id", "status"),
+        Index("ix_memories_user_key_subject", "user_id", "key", "subject"),
+        Index(
+            "ix_memories_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    kind = Column(String(24), nullable=False)
+    category = Column(String(16), nullable=False)
+    # Normalised slot from ai_service/memory/keys.py (birthday, work_location, ...).
+    key = Column(String(48), nullable=True)
+    # Interim person label ("sara", "mother"); NULL = about the user. The people
+    # table replaces this in 8.3.
+    subject = Column(String(80), nullable=True)
+    content = Column(Text, nullable=False)
+    value = Column(JSONB, nullable=True)
+    source = Column(String(24), nullable=False)
+    source_message_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("conversation_messages.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # Rule-based (1.0 stated, 0.8 implied, <= 0.6 inferred), never the AI's estimate.
+    confidence = Column(Float, nullable=False)
+    importance = Column(Float, nullable=False)
+    sensitivity = Column(String(12), nullable=False, default="normal", server_default="normal")
+    status = Column(
+        String(24), nullable=False, default=MemoryStatus.ACTIVE, server_default=MemoryStatus.ACTIVE
+    )
+    superseded_by = Column(
+        UUID(as_uuid=True), ForeignKey("memories.id", ondelete="SET NULL"), nullable=True
+    )
+    valid_from = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=text("now()"),
+    )
+    valid_until = Column(DateTime(timezone=True), nullable=True)
+    embedding = Column(Vector(MEMORY_EMBEDDING_DIMENSIONS), nullable=True)
+    embedding_model = Column(String(64), nullable=True)
+    use_count = Column(Integer, nullable=False, default=0, server_default="0")
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=text("now()"),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=text("now()"),
+    )
+
+
+class MemoryEvent(Base):
+    """Audit trail for memories. Never holds memory content."""
+
+    __tablename__ = "memory_events"
+    __table_args__ = (
+        CheckConstraint(_in("action", MEMORY_EVENT_ACTIONS), name="ck_memory_events_action"),
+        CheckConstraint("actor IN ('user', 'system')", name="ck_memory_events_actor"),
+        Index("ix_memory_events_memory_id", "memory_id"),
+        Index("ix_memory_events_user_created", "user_id", "created_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # No foreign key: the audit line outlives the erased memory.
+    memory_id = Column(UUID(as_uuid=True), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    action = Column(String(16), nullable=False)
+    actor = Column(String(8), nullable=False)
+    # Ids and reasons only, e.g. {"previous_id": ..., "reason": "undo"}.
+    detail = Column(JSONB, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=text("now()"),
+    )

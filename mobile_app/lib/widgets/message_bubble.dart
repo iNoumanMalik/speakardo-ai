@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/memory_action.dart';
 import '../models/message.dart';
 import '../services/chat_provider.dart';
 import '../services/reminder_provider.dart';
@@ -84,6 +85,18 @@ class MessageBubble extends StatelessWidget {
               ],
             ),
           ),
+          if (!isUser && message.memoryActions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 42),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final action in message.memoryActions)
+                    _MemoryChip(message: message, action: action),
+                ],
+              ),
+            ),
           if (showConfirm) ...[
             if (_pendingSummary(pending) != null)
               Padding(
@@ -156,5 +169,101 @@ class MessageBubble extends StatelessWidget {
     final repeat = repeatDisplayLabel(draft['repeat']?.toString());
     final repeatPart = repeat != null ? ' · $repeat' : ' · One time';
     return '$task — $date $time$repeatPart';
+  }
+}
+
+/// "Saved: … · Undo", "Forgot: … · Undo", "Not saved: sensitive".
+class _MemoryChip extends StatelessWidget {
+  const _MemoryChip({required this.message, required this.action});
+
+  final Message message;
+  final MemoryAction action;
+
+  IconData get _icon {
+    switch (action.type) {
+      case 'saved':
+        return Icons.bookmark_added_outlined;
+      case 'updated':
+        return Icons.edit_note_rounded;
+      case 'forgotten':
+        return Icons.delete_outline_rounded;
+      case 'used':
+        return Icons.history_rounded;
+      case 'not_saved':
+        return Icons.shield_outlined;
+      default:
+        return Icons.psychology_alt_outlined;
+    }
+  }
+
+  Future<void> _undo(BuildContext context) async {
+    final ok = await context.read<ChatProvider>().undoMemoryAction(message, action);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Couldn't undo that. Please try again.")),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = action.undone || action.type == 'not_saved';
+    final color = muted ? AppChrome.muted : AppChrome.primary;
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.sizeOf(context).width * 0.72,
+      ),
+      padding: const EdgeInsets.only(left: 10, right: 4, top: 4, bottom: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              action.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: AppChrome.ink,
+                fontWeight: FontWeight.w600,
+                decoration: action.undone ? TextDecoration.lineThrough : null,
+              ),
+            ),
+          ),
+          if (action.canUndo)
+            TextButton(
+              onPressed: () => _undo(context),
+              style: TextButton.styleFrom(
+                foregroundColor: AppChrome.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 30),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Undo'),
+            )
+          else if (action.undone)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Text(
+                'Undone',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: AppChrome.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            )
+          else
+            const SizedBox(width: 6),
+        ],
+      ),
+    );
   }
 }

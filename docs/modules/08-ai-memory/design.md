@@ -103,7 +103,7 @@ flowchart LR
 | Module | Location | Responsibility |
 | --- | --- | --- |
 | Turn Router | `ai_service/router/` | Classify intent (reminder, save memory, ask, forget, list, chat) and extract memory candidates in the same LLM call |
-| Memory Engine | `ai_service/memory/` | Save policy, contradictions, dedupe/merge, embeddings, forgetting |
+| Memory Engine | `ai_service/memory/` (pure logic) + `backend/services/memory_store.py` (database) | Save policy, keys, extraction prompt (ai_service); save, supersede, dedupe, forget, undo, erase, embedding backfill (memory_store). `ai_service` has no database access, so persistence lives in the backend |
 | Context Builder | `ai_service/context/` | Always-on profile + relevant memories + time/timezone + upcoming reminders, within a token budget |
 | Reasoning / Reply | `ai_service/reply/` | Answer from context; says "I don't have that saved" instead of guessing |
 | Memory API | `backend/routers/memory.py`, `people.py` | View, edit, delete, export, privacy settings |
@@ -125,7 +125,7 @@ Prerequisites: Docker image `pgvector/pgvector:pg16` (Homebrew's pgvector formul
 | kind | enum | `fact`, `preference`, `important_date`, `relationship`, `note`, `event` (habits: separate table in 8B) |
 | category | enum | `personal`, `work`, `people`, `health`, `finance`, `places`, `routine`, `other` |
 | key | text, null | Normalised slot: `birthday`, `work_location`, `wake_time` — enables exact lookup and updates |
-| person_id | uuid, null | FK people; null = about the user |
+| subject | text, null | **8.1 interim** person label, lowercase ("sara", "mother"); null = about the user. 8.3 replaces it with `person_id` (FK people) and backfills from these labels |
 | content | text | Sentence shown to the user: "Sara's birthday is June 15" |
 | value | jsonb | Structured value: `{"month":6,"day":15}` |
 | source | enum | `user_explicit`, `conversation`, `reminder`, `onboarding`, `manual_edit`, `behavior` (8B) |
@@ -139,15 +139,16 @@ Prerequisites: Docker image `pgvector/pgvector:pg16` (Homebrew's pgvector formul
 | embedding | vector(1536), null | Null for sensitive memories |
 | embedding_model | text, null | Model that produced `embedding` (e.g. `gemini-embedding-001`). Vectors from different models can't be compared, so a change of `EMBEDDING_PROVIDER` means re-embedding rows with another value |
 | use_count, last_used_at | int, timestamptz | Ranking + "Used" chip |
+| deleted_at | timestamptz, null | Set by Forget (`status = deleted`). The row is hidden at once and erased, embedding included, 24 hours later; Undo restores it until then |
 | created_at, updated_at | timestamptz | |
 
-Indexes: `(user_id, status)`, `(user_id, person_id)`, `(user_id, key)`, ivfflat on `embedding` (switch to hnsw beyond ~1M rows).
+Indexes: `(user_id, status)`, `(user_id, key, subject)`, HNSW on `embedding` (`vector_cosine_ops`). HNSW rather than ivfflat because it works on an empty table and needs no retraining.
 
 ### 6.2 Other tables
 
 - **`people`**: `id, user_id, display_name, relationship, aliases text[], notes, created_at`; unique `(user_id, lower(display_name))`.
 - **`conversation_messages`**: `id, user_id, session_id, role, content, intent, created_at`; retention default 90 days, user-configurable (30 days / 90 days / 1 year / forever) via `users.chat_retention_days` (null = forever). A scheduler job deletes expired messages every 24 hours; shortening the setting deletes that user's expired messages immediately.
-- **`memory_events`** (audit): `id, memory_id, user_id, action (created|updated|used|confirmed|rejected|deleted), actor (user|system), detail jsonb, created_at`.
+- **`memory_events`** (audit): `id, memory_id, user_id, action (created|updated|used|confirmed|rejected|deleted|restored), actor (user|system), detail jsonb, created_at`. No foreign key on `memory_id`, so the audit line outlives the erased memory; `detail` holds ids and reasons only, never content. Undo of a save logs `rejected`; undo of a forget logs `restored`.
 - **Memory settings** — columns on `users`, next to `timezone` and `notifications_enabled`: `chat_retention_days` (from 8.0), then `memory_enabled`, `learn_from_chat` (8.1) and `sensitive_memory_opt_in` (8.2). Read and written through `PATCH /users/me/preferences` until `/memory/settings` arrives in 8.2.
 - **`reminder_events`** (from 8.0): `id, reminder_id, user_id, event (created|fired|snoozed|completed|dismissed|edited|deleted), scheduled_for, occurred_at, local_time, weekday`. Raw log that 8B habit mining depends on — start collecting now, because patterns need weeks of history.
   - `reminder_id` has **no foreign key**, so the log outlives deleted reminders; rows go with the user (`ON DELETE CASCADE` on `user_id`).
@@ -286,6 +287,8 @@ Plus search, detail page (source, confidence, edit/delete), empty state with pro
 
 All endpoints authenticated, scoped to the current user, rate-limited.
 
+**Built in 8.1a:** `GET /memory?kind=&category=&q=` (no `person_id` until 8.3), `DELETE /memory/{id}` (forget: hidden now, erased after 24 h) and `POST /memory/{id}/undo` (reverses the latest save, update or forget; 409 when there is nothing to undo). `memory_enabled` and `learn_from_chat` are set through `PATCH /users/me/preferences` until `/memory/settings` (8.2). The rest of this table arrives with 8.2 and 8.3.
+
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/memory?kind=&category=&person_id=&q=` | List / search active memories |
@@ -324,7 +327,7 @@ Sizes are rough, for one developer part-time.
 | # | Milestone | Scope | Done when | Size |
 | --- | --- | --- | --- | --- |
 | 8.0 | Foundations | pgvector image; Postgres for dev/tests; `conversation_messages` + `/chat/history`; `embed()` in gateway; provider allowlist; `reminder_events` logging | Chat survives app restart; tests pass on Postgres | 1 wk |
-| 8.1 | Talk and remember | Turn Router; `memories`, `memory_events`, settings; save policy (no sensitive saves); exact + semantic retrieval; reply generation; chat chips; first 100 eval cases (English) | "Remember X", "What's X?", "Forget X" work with Undo | 2–3 wk |
+| 8.1 | Talk and remember | Delivered in three parts. **8.1a** remember and forget: tables, settings, save policy, memory rules, extraction call, exact-lookup answers, list, forget + Undo, memory API, erase/backfill jobs, app chips. **8.1b** understand any message: turn router, conversation saves, semantic retrieval, grounded replies, small talk, "Used" chips. **8.1c** measure it: 100-case eval set (English) with record/replay | "Remember X", "What's X?", "Forget X" work with Undo | 2–3 wk |
 | 8.2 | Memory screen + privacy | Rebuilt screen (About you, Privacy); detail/edit/delete; delete by category/all; export; toggles; sensitive encryption + sensitive-memory opt-in | Every privacy control works from chat and app | 2 wk |
 | 8.3 | People and dates | `people` + aliases; relationship extraction; `important_date`; parser `user_context`; yearly reminder offers; upcoming-dates job; onboarding questions | "Remind me to call Ammi on her birthday" works in one message | 2 wk |
 | 8.4 | Background learning | Background extraction; contradictions/versioning; merging; expiry; 150+ eval cases in CI | Auto-saved memories corrected/deleted < 5% | 1–2 wk |

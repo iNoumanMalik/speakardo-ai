@@ -19,3 +19,4 @@ slowapi
 email-validator
 dateparser>=1.2.0
 parsedatetime>=2.6
+pgvector>=0.3

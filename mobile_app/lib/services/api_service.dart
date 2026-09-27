@@ -50,6 +50,17 @@ class ApiService {
     throw Exception(_errorBody(response, 'Failed to load chat history'));
   }
 
+  /// Reverses the latest save, update or forget of a memory (chip "Undo").
+  Future<void> undoMemory(String memoryId) async {
+    final response = await AuthHttp.postJson(
+      Uri.parse('$baseUrl/memory/$memoryId/undo'),
+      const {},
+    );
+    if (response.statusCode != 200) {
+      throw Exception(_errorBody(response, 'Failed to undo'));
+    }
+  }
+
   Future<Map<String, dynamic>> patchReminder(
     String id,
     Map<String, dynamic> reminderData,

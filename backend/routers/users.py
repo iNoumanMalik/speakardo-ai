@@ -52,7 +52,8 @@ def update_user_preferences(
     # null is a real value for chat_retention_days (keep forever), so "sent" is
     # checked with model_fields_set rather than `is None`.
     retention_sent = "chat_retention_days" in body.model_fields_set
-    if body.timezone is None and body.notifications_enabled is None and not retention_sent:
+    toggles = (body.timezone, body.notifications_enabled, body.memory_enabled, body.learn_from_chat)
+    if all(v is None for v in toggles) and not retention_sent:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No preference fields to update",
@@ -62,6 +63,10 @@ def update_user_preferences(
         current_user.timezone = body.timezone
     if body.notifications_enabled is not None:
         current_user.notifications_enabled = body.notifications_enabled
+    if body.memory_enabled is not None:
+        current_user.memory_enabled = body.memory_enabled
+    if body.learn_from_chat is not None:
+        current_user.learn_from_chat = body.learn_from_chat
     purged = 0
     if retention_sent:
         current_user.chat_retention_days = body.chat_retention_days
@@ -77,12 +82,14 @@ def update_user_preferences(
     db.refresh(current_user)
     logger.info(
         "event=user_preferences_updated user_id=%s timezone=%s notifications_enabled=%s "
-        "chat_retention_days=%s purged_messages=%s",
+        "chat_retention_days=%s purged_messages=%s memory_enabled=%s learn_from_chat=%s",
         current_user.id,
         current_user.timezone,
         current_user.notifications_enabled,
         current_user.chat_retention_days,
         purged,
+        current_user.memory_enabled,
+        current_user.learn_from_chat,
     )
     return current_user
 

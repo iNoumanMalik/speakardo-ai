@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/memory_action.dart';
 import '../models/message.dart';
 import 'api_service.dart';
 import 'package:intl/intl.dart';
@@ -97,12 +98,16 @@ class ChatProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void _addAssistantMessage(String displayText) {
+  void _addAssistantMessage(
+    String displayText, {
+    List<MemoryAction> memoryActions = const [],
+  }) {
     addMessage(
       Message(
         text: displayText,
         isUser: false,
         timestamp: DateTime.now(),
+        memoryActions: memoryActions,
       ),
     );
     // TTS disabled — was: speak [ttsPhrase] for reminder confirmations / prompts.
@@ -167,6 +172,7 @@ class ChatProvider with ChangeNotifier {
 
       final reply = response['reply'] as String? ?? '';
       final parsedReminder = response['parsed_reminder'];
+      final memoryActions = _memoryActionsFrom(response);
 
       if (parsedReminder is Map) {
         final draft = Map<String, dynamic>.from(parsedReminder);
@@ -176,11 +182,12 @@ class ChatProvider with ChangeNotifier {
           isUser: false,
           timestamp: DateTime.now(),
           pendingReminder: draft,
+          memoryActions: memoryActions,
         ));
         // TTS disabled — was: TtsService.speak(_shortTtsForDraftReply(...))
       } else {
         _pendingContext = null;
-        _addAssistantMessage(reply);
+        _addAssistantMessage(reply, memoryActions: memoryActions);
         // TTS disabled — was: spoken greeting / error lines for hello & parse failures.
       }
     } catch (e) {
@@ -189,6 +196,36 @@ class ChatProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  List<MemoryAction> _memoryActionsFrom(Map<String, dynamic> response) {
+    final raw = response['memory_actions'];
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((a) => MemoryAction.fromJson(Map<String, dynamic>.from(a)))
+        .toList();
+  }
+
+  /// Undo from a memory chip ("Saved · Undo"). Returns false if it failed.
+  Future<bool> undoMemoryAction(Message message, MemoryAction action) async {
+    if (!action.canUndo) return false;
+    try {
+      await _apiService.undoMemory(action.memoryId!);
+    } catch (e) {
+      debugPrint('ChatProvider: undo failed: $e');
+      return false;
+    }
+    final index = _messages.indexWhere((m) => identical(m, message));
+    if (index != -1) {
+      final updated = [
+        for (final a in message.memoryActions)
+          identical(a, action) ? a.markUndone() : a,
+      ];
+      _messages[index] = message.copyWith(memoryActions: updated);
+      notifyListeners();
+    }
+    return true;
   }
 
   Future<bool> confirmReminder(Map<String, dynamic> reminderData) async {

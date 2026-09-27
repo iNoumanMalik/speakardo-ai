@@ -17,6 +17,7 @@ import routers.auth
 import routers.chat
 import routers.devices
 import routers.health
+import routers.memory
 import routers.reminders
 import routers.users
 from rate_limit import limiter
@@ -80,6 +81,7 @@ def read_root():
 app.include_router(routers.health.router, prefix="/health", tags=["health"])
 app.include_router(routers.auth.router, prefix="/auth", tags=["auth"])
 app.include_router(routers.chat.router, prefix="/chat", tags=["chat"])
+app.include_router(routers.memory.router, prefix="/memory", tags=["memory"])
 app.include_router(routers.reminders.router, prefix="/reminders", tags=["reminders"])
 app.include_router(routers.users.router, prefix="/users", tags=["users"])
 app.include_router(routers.devices.router, tags=["devices"])

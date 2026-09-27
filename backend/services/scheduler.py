@@ -8,6 +8,11 @@ from sqlalchemy.orm import Session
 from database import SessionLocal
 import models
 import logging
+import sys
+from services import memory_store
+
+# ai_service lives next to backend/ (same pattern as routers/chat.py).
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from services.chat_history import purge_expired_messages
 from services.notifications import send_push_notification
 from services.local_schedule import (
@@ -28,6 +33,8 @@ PROCESSING_TIMEOUT_SECONDS = int(os.getenv("PROCESSING_TIMEOUT_SECONDS", "120"))
 CHAT_PURGE_INTERVAL_HOURS = 24
 # First cleanup shortly after startup: dev machines are rarely up at a fixed night hour.
 CHAT_PURGE_FIRST_RUN_DELAY = timedelta(minutes=5)
+MEMORY_ERASE_INTERVAL_HOURS = 1
+MEMORY_BACKFILL_INTERVAL_MINUTES = 15
 
 
 def _utcnow() -> datetime:
@@ -537,6 +544,59 @@ async def purge_expired_chat_history() -> int:
         db.close()
 
 
+async def erase_forgotten_memories() -> int:
+    """Hourly job: erase memories forgotten more than 24 hours ago (design §9)."""
+    db = SessionLocal()
+    try:
+        erased = memory_store.erase_forgotten(db, now=_utcnow())
+        db.commit()
+        logger.info("event=memories_erased count=%s", erased)
+        return erased
+    except Exception:
+        db.rollback()
+        logger.exception("event=memories_erase_failed")
+        return 0
+    finally:
+        db.close()
+
+
+async def backfill_memory_embeddings(embedder=None, *, batch_size: int = 50) -> int:
+    """Embed memories that have no embedding, or one from a different model.
+
+    Covers failed embed calls at save time and a change of EMBEDDING_PROVIDER.
+    """
+    if embedder is None:
+        try:
+            from ai_service.gateway.factory import get_default_embedder
+
+            embedder = get_default_embedder()
+        except Exception as exc:
+            logger.warning("event=memory_backfill_skipped reason=%s", type(exc).__name__)
+            return 0
+    if not embedder.is_configured():
+        logger.warning("event=memory_backfill_skipped reason=embedder_not_configured")
+        return 0
+
+    db = SessionLocal()
+    try:
+        rows = memory_store.rows_needing_embedding(db, model=embedder.model, limit=batch_size)
+        if not rows:
+            return 0
+        vectors = await embedder.embed([row.content for row in rows])
+        for row, vector in zip(rows, vectors):
+            row.embedding = vector
+            row.embedding_model = embedder.model
+        db.commit()
+        logger.info("event=memory_embeddings_backfilled count=%s model=%s", len(rows), embedder.model)
+        return len(rows)
+    except Exception:
+        db.rollback()
+        logger.exception("event=memory_backfill_failed")
+        return 0
+    finally:
+        db.close()
+
+
 def start_scheduler():
     scheduler = AsyncIOScheduler()
     scheduler.add_job(
@@ -550,6 +610,22 @@ def start_scheduler():
         purge_expired_chat_history,
         "interval",
         hours=CHAT_PURGE_INTERVAL_HOURS,
+        next_run_time=_utcnow() + CHAT_PURGE_FIRST_RUN_DELAY,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        erase_forgotten_memories,
+        "interval",
+        hours=MEMORY_ERASE_INTERVAL_HOURS,
+        next_run_time=_utcnow() + CHAT_PURGE_FIRST_RUN_DELAY,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        backfill_memory_embeddings,
+        "interval",
+        minutes=MEMORY_BACKFILL_INTERVAL_MINUTES,
         next_run_time=_utcnow() + CHAT_PURGE_FIRST_RUN_DELAY,
         max_instances=1,
         coalesce=True,

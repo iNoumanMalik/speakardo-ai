@@ -110,7 +110,8 @@ flutter analyze
 
 - macOS ignores filename case: `docs/Setup` and `docs/setup` are the same folder. Use lowercase kebab-case.
 - The backend imports `ai_service` through a `sys.path` insert (see `backend/routers/chat.py`).
-- Chat currently treats every message as a reminder request; the turn router in 8.1 changes this.
+- Chat routing (8.1a): memory rules first (`ai_service/router/rules.py`: "remember that…", "forget…", "what's my…", "what do you remember about me"), then the reminder parser for everything else. The AI turn router arrives in 8.1b. Memory rules are skipped while a reminder draft is pending.
+- Memory persistence lives in `backend/services/memory_store.py`; `ai_service/memory/` is pure logic (keys, save policy, extraction prompt). Never log memory content or put it in `memory_events.detail`.
 - Homebrew's `pgvector` formula only builds for `postgresql@17`/`@18`, so local Postgres runs in Docker (`pgvector/pgvector:pg16`), not Homebrew. Stop any Homebrew Postgres first: both use port 5432.
 - `env_config.py` loads `.env` with `override=True`, so `DATABASE_URL=… alembic …` on the command line is silently ignored. Change `.env`, or set the variable after `env_config` is imported (as `tests/conftest.py` does).
 - Use `backend/venv` (it has every requirement). `backend/.venv` is stale: no `google-genai` and `anthropic` 0.x. A provider whose SDK is missing silently drops out: Gemini from the fallback chain, Anthropic from `MEMORY_SAFE_PROVIDERS`.

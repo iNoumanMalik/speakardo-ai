@@ -91,10 +91,48 @@ class ChatRequest(BaseModel):
     pending_context: Optional[dict[str, Any]] = None
 
 
+class MemoryAction(BaseModel):
+    """A chip under a chat reply: "Saved · Undo", "Forgot · Undo", "Not saved: sensitive"."""
+
+    type: str  # saved | updated | forgotten | used | not_saved
+    memory_id: Optional[UUID] = None
+    label: str
+    undo: bool = False
+
+
 class ChatResponse(BaseModel):
     reply: str
     parsed_reminder: Optional[dict[str, Any]] = None
     client_action: Optional[dict[str, Any]] = None
+    # What the turn was about (e.g. create, memory_save, memory_query).
+    intent: Optional[str] = None
+    memory_actions: list[MemoryAction] = Field(default_factory=list)
+
+
+class MemoryResponse(BaseModel):
+    """A memory as the app sees it. The embedding is never returned."""
+
+    id: UUID
+    kind: str
+    category: str
+    key: Optional[str] = None
+    subject: Optional[str] = None
+    content: str
+    value: Optional[dict[str, Any]] = None
+    source: str
+    confidence: float
+    importance: float
+    status: str
+    valid_until: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MemoryUndoResponse(BaseModel):
+    undone: str  # save | update | forget
+    memory: MemoryResponse
 
 
 class ChatHistoryMessage(BaseModel):
@@ -185,6 +223,8 @@ class UserProfileResponse(BaseModel):
     notifications_enabled: bool
     # Days of chat history kept; null means forever.
     chat_retention_days: Optional[int] = None
+    memory_enabled: bool = True
+    learn_from_chat: bool = True
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -220,6 +260,10 @@ class UserPreferencesUpdate(BaseModel):
     # 30, 90 or 365 days; an explicit null keeps chat history forever. Leaving the
     # field out changes nothing (the router checks model_fields_set).
     chat_retention_days: Optional[int] = None
+    # False = save nothing to memory.
+    memory_enabled: Optional[bool] = None
+    # False = only explicit "remember that …" requests are saved.
+    learn_from_chat: Optional[bool] = None
 
     @field_validator("chat_retention_days")
     @classmethod

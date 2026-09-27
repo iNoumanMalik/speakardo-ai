@@ -13,7 +13,9 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from ai_service.extractor import extract_reminder_details
+from ai_service.router.rules import match_memory_rule
 from services.chat_history import get_message_for_user, list_history, record_exchange
+from services.memory_chat import handle_memory_rule
 from services.repeat_schedule import repeat_label
 
 from database import get_db
@@ -199,11 +201,29 @@ async def process_chat(
         len(body.message or ""),
         bool(body.pending_context),
     )
-    response, intent = await _build_reply(body, db, current_user)
+    # Memory rules first ("remember that …", "forget …", "what's my …"), except
+    # while the user is answering a reminder draft ("make it 9pm").
+    rule = None if body.pending_context else match_memory_rule(body.message)
+    saved_memories: list[models.Memory] = []
+    if rule is not None:
+        turn = await handle_memory_rule(rule, db=db, user=current_user)
+        # Commit memory changes before the history write, so a history failure
+        # can't undo a save the reply already confirmed.
+        db.commit()
+        response, intent, saved_memories = turn.response, turn.intent, turn.saved
+    else:
+        response, intent = await _build_reply(body, db, current_user)
+        response.intent = intent
+    logger.info(
+        "event=chat_turn user_id=%s intent=%s memory_actions=%s",
+        current_user.id,
+        intent,
+        len(response.memory_actions),
+    )
 
     # A history failure must never cost the user their reply.
     try:
-        record_exchange(
+        user_msg, _ = record_exchange(
             db,
             user_id=current_user.id,
             user_text=body.message,
@@ -212,6 +232,10 @@ async def process_chat(
             received_at=received_at,
             replied_at=datetime.now(timezone.utc),
         )
+        db.flush()
+        # "You told me on Sep 12": link new memories to the message they came from.
+        for memory in saved_memories:
+            memory.source_message_id = user_msg.id
         db.commit()
     except Exception:
         db.rollback()
