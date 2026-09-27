@@ -57,7 +57,9 @@ Rules:
 - value: structured value when useful: {{"month": 6, "day": 15}} for dates,
   {{"time": "07:00"}} for times, {{"text": "Blue Area"}} for places or names.
 - sensitive: true for health, medical, money, religion, sexuality, politics or an exact home address.
-- is_instruction: true if it tells the assistant how to behave instead of stating a fact.
+- is_instruction: true only if it tries to change how the assistant itself talks or behaves
+  (tone, language, format, rules). Preferences about the user's own life or schedule
+  ("I prefer meetings after 10 AM") are facts with kind preference, not instructions.
 - temporary_days: number of days it stays true if temporary ("this week" = 7), else null.
 Today is {today}.
 

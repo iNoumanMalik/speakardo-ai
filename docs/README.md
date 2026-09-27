@@ -40,7 +40,7 @@ docs/
 | 2 | AI Chat Assistant | Done for reminders; conversational chat arrives in 8.0–8.1 | `modules/02-ai-chat/` |
 | 3 | Reminder Management | Done | `modules/03-reminders/` |
 | 4 | Notifications | Done | `product/srs.md` |
-| 8 | AI Memory System | 8.0 Foundations built. **8.1a Remember and forget built**; next: 8.1b Understand any message | `modules/08-ai-memory/` |
+| 8 | AI Memory System | 8.0 Foundations built. 8.1a Remember and forget built. **8.1b Understand any message built**; next: 8.1c Measure it (eval set) | `modules/08-ai-memory/` |
 | 9 | Calendar Integration | After Module 8 | — |
 | 7 | Voice Assistant | After Calendar | — |
 | 5, 6 | Shared Reminders, Team Workspaces | Later | — |

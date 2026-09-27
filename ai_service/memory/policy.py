@@ -94,14 +94,17 @@ class MemoryCandidate:
         key = normalise_key(self.key)
         kind = self.kind if self.kind in KINDS else "note"
         category = self.category if self.category in CATEGORIES else "other"
+        subject = normalise_subject(self.subject)
         if key is not None and category not in SENSITIVE_CATEGORIES:
             kind, category = KEYS[key].kind, KEYS[key].category
+            if subject is not None and category == "personal":
+                category = "people"  # Sara's birthday is about Sara, not the user
         return MemoryCandidate(
             content=re.sub(r"\s+", " ", (self.content or "")).strip()[:500],
             kind=kind,
             category=category,
             key=key,
-            subject=normalise_subject(self.subject),
+            subject=subject,
             value=self.value if isinstance(self.value, dict) else None,
             basis=self.basis if self.basis in CONFIDENCE_BY_BASIS else "guess",
             sensitive=bool(self.sensitive),

@@ -368,3 +368,52 @@ def count_active(db: Session, user_id: UUID) -> int:
         .scalar()
         or 0
     )
+
+
+# How many nearest memories to fetch before ranking (design §8: top 20).
+SEMANTIC_CANDIDATES = 20
+PROFILE_MIN_IMPORTANCE = 0.6
+
+
+def semantic_candidates(
+    db: Session,
+    user_id: UUID,
+    embedding: list[float],
+    *,
+    model: str,
+    limit: int = SEMANTIC_CANDIDATES,
+    now: Optional[datetime] = None,
+) -> list[tuple[models.Memory, float]]:
+    """Nearest active, currently valid memories as (memory, cosine similarity).
+
+    Only rows embedded with the same model are comparable.
+    """
+    distance = models.Memory.embedding.cosine_distance(embedding)
+    rows = (
+        _active(db, user_id, now or _now())
+        .filter(
+            models.Memory.embedding.is_not(None),
+            models.Memory.embedding_model == model,
+        )
+        .add_columns(distance.label("distance"))
+        .order_by(distance)
+        .limit(limit)
+        .all()
+    )
+    return [(memory, 1.0 - float(d)) for memory, d in rows]
+
+
+def profile_memories(
+    db: Session, user_id: UUID, *, limit: int = 6, now: Optional[datetime] = None
+) -> list[models.Memory]:
+    """Always-on profile: the most important basics, for every reply (design §8)."""
+    return (
+        _active(db, user_id, now or _now())
+        .filter(
+            models.Memory.importance >= PROFILE_MIN_IMPORTANCE,
+            models.Memory.sensitivity == "normal",
+        )
+        .order_by(models.Memory.importance.desc(), models.Memory.created_at.desc())
+        .limit(limit)
+        .all()
+    )

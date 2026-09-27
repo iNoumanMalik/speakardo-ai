@@ -41,9 +41,12 @@ async def extract_reminder_details(
     pending_context: Optional[dict] = None,
     recent_reminders: Optional[list] = None,
     user_timezone: Optional[str] = None,
+    preparsed: Optional[dict] = None,
 ) -> Optional[dict]:
     """
     Extract structured reminder data via hybrid parsing.
+
+    ``preparsed``: slots from the turn router, used instead of a Layer 3 call.
 
     Returns dict with:
     intent, task, date, time, repeat, needs_time, needs_clarification,
@@ -55,6 +58,7 @@ async def extract_reminder_details(
             pending_context=pending_context,
             recent_reminders=recent_reminders,
             user_timezone=user_timezone,
+            preparsed=preparsed,
         )
     except Exception as e:
         logger.exception("event=extract_reminder_details_exception error=%s", e)

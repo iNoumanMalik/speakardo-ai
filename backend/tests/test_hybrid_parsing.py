@@ -159,3 +159,32 @@ def test_hybrid_calls_llm_when_ambiguous():
         mock_llm.assert_called_once()
         assert result is not None
         assert result["time"] == "15:00"
+
+
+def test_router_slots_replace_the_llm_call():
+    """8.1b: when the turn router already read the reminder, Layer 3 isn't called."""
+    preparsed = {
+        "intent": "create",
+        "task": "call Ali",
+        "date": "2026-05-25",
+        "time": "15:00",
+        "repeat": None,
+        "needs_time": False,
+        "needs_clarification": False,
+        "clarification_question": None,
+        "editable_reminder_id": None,
+    }
+    with patch(
+        "ai_service.parsing.hybrid.parse_layer3_llm",
+        new_callable=AsyncMock,
+    ) as mock_llm:
+        result = asyncio.run(
+            parse_reminder_hybrid(
+                "Remind me to call Ali at 3",
+                user_timezone="UTC",
+                preparsed=preparsed,
+            )
+        )
+        mock_llm.assert_not_called()
+        assert result["time"] == "15:00"
+        assert result["_parser_layer"] == "router"

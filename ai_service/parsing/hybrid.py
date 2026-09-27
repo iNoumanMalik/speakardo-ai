@@ -71,12 +71,16 @@ async def parse_reminder_hybrid(
     pending_context: Optional[dict[str, Any]] = None,
     recent_reminders: Optional[list] = None,
     user_timezone: Optional[str] = None,
+    preparsed: Optional[dict] = None,
 ) -> Optional[dict]:
     """
     Run the hybrid pipeline:
     1. Layer 1 — regex / keywords / intent
     2. Layer 2 — dateparser + parsedatetime
     3. Layer 3 — LLM when rules are insufficient
+
+    ``preparsed``: reminder slots the turn router already extracted. When the
+    rules aren't confident, these replace the Layer 3 call (one AI call, not two).
     """
     layer1 = parse_layer1(
         message,
@@ -108,6 +112,12 @@ async def parse_reminder_hybrid(
             layer2.time,
         )
         return _finalize_rule_result(layer2)
+
+    if preparsed and preparsed.get("task"):
+        logger.info("event=hybrid_parse_router_slots intent=%s", preparsed.get("intent"))
+        normalized = normalize_parsed(dict(preparsed))
+        normalized["_parser_layer"] = "router"
+        return normalized
 
     llm_result = await parse_layer3_llm(
         message,

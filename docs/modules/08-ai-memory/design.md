@@ -218,6 +218,8 @@ Answering rules:
 
 Models: small fast model for router/extraction; stronger model for memory-grounded replies; both only via allowlisted providers.
 
+**As built (8.1b):** retrieval uses a minimum cosine similarity of 0.56, tuned for `gemini-embedding-001` (related question/memory pairs scored 0.57–0.78, unrelated 0.45–0.553); re-tune with the 8.1c eval set when the embedding model changes. Exact-lookup answers are templated (no AI call); other questions get one grounded reply call. When nothing relevant is saved and there are no reminders, the reply is "I don't have that saved. Want to tell me?" without an AI call. If the turn router can't reach a provider, questions get "I couldn't check that just now" instead of being parsed as a reminder.
+
 ---
 
 ## 9. Privacy and trust

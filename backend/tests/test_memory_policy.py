@@ -104,7 +104,7 @@ def test_ai_output_is_clamped_to_the_vocabulary():
     ).normalised()
     # The known key decides kind and category.
     assert (c.content, c.kind, c.category, c.key, c.subject, c.basis, c.value) == (
-        "Sara's birthday is June 15", "important_date", "personal", "birthday", "sara", "guess", None,
+        "Sara's birthday is June 15", "important_date", "people", "birthday", "sara", "guess", None,
     )
     unknown = MemoryCandidate(content="x", kind="weird", category="family").normalised()
     assert (unknown.kind, unknown.category) == ("note", "other")
@@ -127,3 +127,10 @@ def test_keys_and_subjects():
     assert normalise_subject("me") is None
     assert importance_for("important_date", None) == 0.9
     assert importance_for("preference", None) == 0.4
+
+
+def test_a_personal_key_about_someone_else_is_filed_under_people():
+    sara = MemoryCandidate(content="Sara's birthday is June 15", key="birthday", subject="Sara")
+    mine = MemoryCandidate(content="Your birthday is March 3", key="birthday")
+    assert sara.normalised().category == "people"
+    assert mine.normalised().category == "personal"

@@ -9,7 +9,7 @@ run and emptied after every test. Start it with:
 import os
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
@@ -83,6 +83,22 @@ def block_real_push(monkeypatch):
     )
     monkeypatch.setattr("services.scheduler.send_push_notification", fake)
     return fake
+
+
+@pytest.fixture(autouse=True)
+def block_real_ai(monkeypatch):
+    """No test may reach a real AI provider. Tests that need AI output patch these.
+
+    Defaults behave like "no provider available": the turn router falls back to
+    the reminder parser, replies use their templated fallbacks, nothing is embedded.
+    """
+    import routers.chat
+    import services.memory_chat
+
+    monkeypatch.setattr(routers.chat, "route_turn", AsyncMock(return_value=None))
+    monkeypatch.setattr(services.memory_chat, "_generate_reply", AsyncMock(return_value=None))
+    monkeypatch.setattr(services.memory_chat, "_embed", AsyncMock(return_value=(None, None)))
+    monkeypatch.setattr(services.memory_chat, "extract_memory", AsyncMock(return_value=None))
 
 
 @pytest.fixture(scope="session")

@@ -151,3 +151,36 @@ def match_memory_rule(message: str) -> Optional[RuleMatch]:
     if m:
         return _query(text, m.group("thing"), person_only=True)
     return None
+
+
+# Strong reminder signals: these messages skip the turn router and go straight
+# to the reminder parser (same cost and behaviour as before 8.1b).
+_REMINDER_SIGNALS = re.compile(
+    r"\b(?:remind(?:er|ers)?|wake me|alert me|notify me|set (?:an? )?alarm|alarm (?:for|at)"
+    r"|don'?t let me forget|remember to|don'?t forget to|do not forget to)\b",
+    re.IGNORECASE,
+)
+
+
+def looks_like_reminder(message: str) -> bool:
+    return bool(_REMINDER_SIGNALS.search(message or ""))
+
+
+_GREETINGS = ("hi", "hello", "hey", "greetings", "good morning", "good afternoon", "good evening")
+
+
+def is_greeting(message: str) -> bool:
+    """Same check the chat router has always used for its canned greeting."""
+    lower = (message or "").lower().strip()
+    return lower in _GREETINGS or any(lower.startswith(g + " ") for g in _GREETINGS)
+
+
+_QUESTION = re.compile(
+    r"\?\s*$|^(?:what|when|where|who|whom|whose|which|how|why|do|does|did|is|are|was|were"
+    r"|can|could|should|would|will|have|has)\b",
+    re.IGNORECASE,
+)
+
+
+def looks_like_question(message: str) -> bool:
+    return bool(_QUESTION.search((message or "").strip()))

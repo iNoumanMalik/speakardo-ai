@@ -93,7 +93,7 @@ MEMORY_SAFE_PROVIDERS=gemini,openai,anthropic
 EMBEDDING_PROVIDER=gemini
 ```
 
-Only your `GEMINI_API_KEY` needs to work. Google may use free-tier Gemini data, so use test data only. The server logs `event=ai_memory_providers_untrusted` at startup as a reminder. Remove `gemini` from the list before real users.
+Only your `GEMINI_API_KEY` needs to work. Also set `GEMINI_MODEL=gemini-2.5-flash-lite`: the free tier allows only 20 requests a day for `gemini-2.5-flash`, and a chat turn can use two. Google may use free-tier Gemini data, so use test data only. The server logs `event=ai_memory_providers_untrusted` at startup as a reminder. Remove `gemini` from the list before real users.
 
 ## 6. Supabase (shared database)
 

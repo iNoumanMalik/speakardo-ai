@@ -13,9 +13,20 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 from ai_service.extractor import extract_reminder_details
-from ai_service.router.rules import match_memory_rule
+from ai_service.router.rules import (
+    is_greeting,
+    looks_like_question,
+    looks_like_reminder,
+    match_memory_rule,
+)
+from ai_service.router.turn import REMINDER_INTENTS, route_turn
 from services.chat_history import get_message_for_user, list_history, record_exchange
-from services.memory_chat import handle_memory_rule
+from services.local_schedule import utc_to_local
+from services.memory_chat import (
+    handle_memory_rule,
+    handle_routed_turn,
+    save_conversation_memories,
+)
 from services.repeat_schedule import repeat_label
 
 from database import get_db
@@ -24,6 +35,8 @@ from rate_limit import limiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+ROUTER_UNAVAILABLE_REPLY = "I couldn't check that just now. Please try again in a moment."
 
 
 def _server_recent_reminders(db: Session, user_id: UUID, limit: int = 40) -> List[Dict[str, Any]]:
@@ -65,21 +78,26 @@ async def _build_reply(
     body: schemas.ChatRequest,
     db: Session,
     current_user: models.User,
+    *,
+    preparsed: Optional[dict] = None,
 ) -> Tuple[schemas.ChatResponse, str]:
-    """Reply to one chat message, plus the intent stored with it in history."""
-    message_lower = body.message.lower().strip()
-    greetings = [
-        "hi",
-        "hello",
-        "hey",
-        "greetings",
-        "good morning",
-        "good afternoon",
-        "good evening",
-    ]
-    if message_lower in greetings or any(
-        message_lower.startswith(g + " ") for g in greetings
-    ):
+    """Reminder-flow reply to one chat message, plus the intent stored in history.
+
+    ``preparsed``: reminder slots from the turn router (skips the Layer 3 AI call).
+    """
+    response, intent = await _reminder_reply(body, db, current_user, preparsed=preparsed)
+    response.intent = intent
+    return response, intent
+
+
+async def _reminder_reply(
+    body: schemas.ChatRequest,
+    db: Session,
+    current_user: models.User,
+    *,
+    preparsed: Optional[dict] = None,
+) -> Tuple[schemas.ChatResponse, str]:
+    if is_greeting(body.message):
         reply = (
             "Hello! I'm your AI Reminder assistant. How can I help you today? "
             "You can say things like 'Remind me to call Mom tomorrow at 9am'."
@@ -92,6 +110,7 @@ async def _build_reply(
         pending_context=body.pending_context,
         recent_reminders=recent,
         user_timezone=current_user.timezone,
+        preparsed=preparsed,
     )
 
     if not parsed:
@@ -185,6 +204,62 @@ async def _build_reply(
     )
 
 
+async def _route(
+    body: schemas.ChatRequest, db: Session, user: models.User
+) -> Tuple[schemas.ChatResponse, str, List[models.Memory]]:
+    """Decide what the message is for and handle it (design §7).
+
+    1. Answering a reminder draft ("make it 9pm") → reminder flow.
+    2. Memory rules ("remember that…", "forget…", "what's my…") → memory engine.
+    3. Greetings and clear reminder requests → reminder flow (no router call).
+    4. Otherwise one turn-router AI call. If it fails → reminder flow, as before 8.1b.
+
+    Memory changes are committed here, before the history write, so a history
+    failure can't undo a save the reply already confirmed.
+    """
+    if body.pending_context:
+        response, intent = await _build_reply(body, db, user)
+        return response, intent, []
+
+    rule = match_memory_rule(body.message)
+    if rule is not None:
+        turn = await handle_memory_rule(rule, db=db, user=user)
+        db.commit()
+        return turn.response, turn.intent, turn.saved
+
+    if is_greeting(body.message) or looks_like_reminder(body.message):
+        response, intent = await _build_reply(body, db, user)
+        return response, intent, []
+
+    decision = await route_turn(
+        body.message,
+        today=utc_to_local(datetime.now(timezone.utc), user.timezone).date().isoformat(),
+        timezone=user.timezone,
+    )
+    if decision is None:
+        # No allowlisted provider answered (e.g. a free-tier rate limit). Don't turn
+        # a question into a fake reminder; anything else keeps the reminder flow.
+        if looks_like_question(body.message):
+            return schemas.ChatResponse(reply=ROUTER_UNAVAILABLE_REPLY, intent="unavailable"), "unavailable", []
+        response, intent = await _build_reply(body, db, user)
+        return response, intent, []
+
+    if decision.intent in REMINDER_INTENTS:
+        response, intent = await _build_reply(
+            body, db, user, preparsed=decision.reminder_slots()
+        )
+        # "Remind me to call Sara, she's my sister": the fact is saved too.
+        actions, saved = await save_conversation_memories(decision.candidates(), db, user)
+        if saved:
+            db.commit()
+        response.memory_actions = [schemas.MemoryAction(**a) for a in actions]
+        return response, intent, saved
+
+    turn = await handle_routed_turn(decision, body.message, db=db, user=user)
+    db.commit()
+    return turn.response, turn.intent, turn.saved
+
+
 @router.post("", response_model=schemas.ChatResponse)
 @limiter.limit("60/minute")
 async def process_chat(
@@ -201,19 +276,7 @@ async def process_chat(
         len(body.message or ""),
         bool(body.pending_context),
     )
-    # Memory rules first ("remember that …", "forget …", "what's my …"), except
-    # while the user is answering a reminder draft ("make it 9pm").
-    rule = None if body.pending_context else match_memory_rule(body.message)
-    saved_memories: list[models.Memory] = []
-    if rule is not None:
-        turn = await handle_memory_rule(rule, db=db, user=current_user)
-        # Commit memory changes before the history write, so a history failure
-        # can't undo a save the reply already confirmed.
-        db.commit()
-        response, intent, saved_memories = turn.response, turn.intent, turn.saved
-    else:
-        response, intent = await _build_reply(body, db, current_user)
-        response.intent = intent
+    response, intent, saved_memories = await _route(body, db, current_user)
     logger.info(
         "event=chat_turn user_id=%s intent=%s memory_actions=%s",
         current_user.id,
