@@ -1,0 +1,21 @@
+{
+  "case": "implied-09",
+  "recorded_at": "2026-09-27T11:29:43+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"chat\",\"reminder\":null,\"memories\":[],\"query\":null,\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"I’m sorry it was such a long day. Let me know if you’d like to set a reminder or have me remember anything for you later.\",\"used\":[]}"
+    }
+  ]
+}

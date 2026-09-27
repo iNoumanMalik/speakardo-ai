@@ -70,6 +70,7 @@ NOT_SAVED_INSTRUCTION = (
     "I can remember facts about you, but not instructions for how I should behave."
 )
 NOT_SAVED_DISABLED = "Memory is turned off, so I didn't save that."
+NOT_SAVED_UNGROUNDED = "Sorry, I didn't catch that exactly, so I haven't saved it. Could you say it again?"
 NOTHING_SAVED_HINT = 'You can say things like "Remember that my office is in Blue Area".'
 CHAT_FALLBACK = (
     "I'm here to help. I can set reminders or remember things for you, like "
@@ -179,9 +180,11 @@ async def _generate_reply(message: str, **kwargs):
 # --- saving ------------------------------------------------------------------------------
 
 
-async def _store(candidate: MemoryCandidate, settings: MemorySettings, db, user) -> _Stored:
-    """Apply the save policy, then embed and store what passes."""
-    result = decide(candidate, settings)
+async def _store(
+    candidate: MemoryCandidate, settings: MemorySettings, db, user, source_text: str
+) -> _Stored:
+    """Apply the save policy (checked against what the user said), then embed and store."""
+    result = decide(candidate, settings, source_text=source_text)
     if not result.should_save:
         return _Stored(result)
     c = result.candidate
@@ -241,6 +244,8 @@ def _save_reply(stored: list[_Stored]) -> Optional[str]:
         return NOT_SAVED_INSTRUCTION
     if Decision.SKIP_DISABLED in decisions:
         return NOT_SAVED_DISABLED
+    if Decision.SKIP_UNGROUNDED in decisions:
+        return NOT_SAVED_UNGROUNDED
     return None
 
 
@@ -251,14 +256,14 @@ def _sensitive_chip(stored: list[_Stored]) -> list[dict]:
 
 
 async def save_conversation_memories(
-    candidates: list[MemoryCandidate], db, user: models.User
+    candidates: list[MemoryCandidate], db, user: models.User, message: str
 ) -> tuple[list[dict], list[models.Memory]]:
     """Facts stated in passing (e.g. inside a reminder): saved quietly, with chips.
 
     Nothing is said about candidates the policy refuses.
     """
     settings = settings_for(user)
-    stored = [await _store(c, settings, db, user) for c in candidates]
+    stored = [await _store(c, settings, db, user, message) for c in candidates]
     return _chips(stored)
 
 
@@ -275,7 +280,7 @@ async def _save_rule(match: RuleMatch, db, user: models.User) -> MemoryTurn:
     if candidate is None:
         logger.info("event=memory_extraction_fallback user_id=%s", user.id)
         candidate = _raw_candidate(match.text)
-    stored = [await _store(candidate, settings, db, user)]
+    stored = [await _store(candidate, settings, db, user, match.text)]
     actions, saved = _chips(stored)
     return _reply(
         _save_reply(stored) or NOT_SAVED_DISABLED,
@@ -288,7 +293,7 @@ async def _save_rule(match: RuleMatch, db, user: models.User) -> MemoryTurn:
 async def _save_routed(
     decision: TurnDecision, message: str, db, user: models.User
 ) -> MemoryTurn:
-    stored = [await _store(c, settings_for(user), db, user) for c in decision.candidates()]
+    stored = [await _store(c, settings_for(user), db, user, message) for c in decision.candidates()]
     text = _save_reply(stored)
     if text is None:
         # Nothing clear enough to save ("I think I might switch jobs"): just talk.
@@ -483,7 +488,7 @@ async def handle_routed_turn(
         return await _save_routed(decision, message, db, user)
 
     # Stated facts in any other turn are saved quietly, with chips.
-    actions, saved = await save_conversation_memories(decision.candidates(), db, user)
+    actions, saved = await save_conversation_memories(decision.candidates(), db, user, message)
 
     if decision.intent == MEMORY_QUERY:
         target = decision.query

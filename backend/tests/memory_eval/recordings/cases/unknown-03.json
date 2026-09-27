@@ -1,0 +1,21 @@
+{
+  "case": "unknown-03",
+  "recorded_at": "2026-09-27T11:34:17+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_query\",\"reminder\":null,\"memories\":[],\"query\":{\"text\":\"What's my favourite movie?\",\"key\":null,\"subject\":null},\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"I don't have that saved. Want to tell me?\",\"used\":[]}"
+    }
+  ]
+}

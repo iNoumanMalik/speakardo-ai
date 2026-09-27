@@ -189,6 +189,14 @@ Each message costs at most one LLM call to understand and one to reply; many cos
 | Learning paused | Save nothing | Settings toggle |
 
 Dedupe: same `key` + `person_id` first, then cosine distance < 0.08 → merge.
+
+**Rule-based checks (8.1c).** The AI's output isn't trusted on its own; these rules in `ai_service/memory/policy.py` run against what the user actually said:
+
+- **Hedges** ("maybe", "probably", "might", "not sure", "thinking about") → not saved unless the user explicitly asked.
+- **One-off events** in the past ("I had biryani for lunch today") → not saved; they stay in chat history.
+- **Names the user never said** → not saved (catches misspellings such as "Faisl" for "Faisal"). An explicit request gets "Sorry, I didn't catch that exactly".
+- **Durations** ("this week", "for two weeks", "until Friday") → saved with `valid_until`, even if the AI forgot to mark the fact temporary.
+- **Known slots decide the category.** "Dentist" is always People and "workout time" Routine, whatever category the AI picked. Doctor and dentist slots always belong to the user (no `subject`). Sensitivity comes from the AI's flag plus the keyword rules on the content, not from the category alone, so a dentist's name or gym times aren't refused as health data.
 Background extraction: every 5 messages or at session end, same policy, catches only what the live pass missed.
 
 ---
@@ -343,6 +351,8 @@ Ship 8.1 to 10–20 real users before polishing 8.2.
 
 **Eval set** (`backend/tests/memory_eval/`): 150+ scripted conversations in English with expected saves, forbidden saves and expected answers (Roman Urdu cases arrive with the language milestone). Recorded LLM responses in CI; live-model run before any prompt/model change.
 
+**As built (8.1c):** 100 cases in `cases.yaml` (explicit saves 20, stated facts 15, updates 10, temporary 5, sensitive 10, implied 10, injection 5, questions 10, unknown 5, forget 5, reminders 5). Each case runs through the real `POST /chat` pipeline on the Postgres test database; only the AI gateway is swapped for a recorder. Replay (the default) reads `recordings/` and is free and deterministic; `EVAL_RECORD=missing|all` records with the live provider. Replayed calls are checked by kind and `personal_data`, so a pipeline change that alters the AI calls fails as "re-record this case" instead of passing silently. Gates: the targets below (latency is not measured offline) plus zero failed behaviour checks (forget, keep, update, reminder, injection).
+
 | Check | Target |
 | --- | --- |
 | Precision of saved memories | ≥ 95% |
@@ -360,7 +370,7 @@ Ship 8.1 to 10–20 real users before polishing 8.2.
 
 - [ ] **Free vs Pro** — Recommendation: core memory free and unlimited; learned habits, predictive suggestions and calendar context in Pro.
 - [x] **Provider allowlist** — Decided 2026-09-26: `MEMORY_SAFE_PROVIDERS=openai,anthropic` (the default). Memory-bearing calls pass `personal_data=True` and never fall back beyond this list; the embedding provider must be on it. Gemini, DeepSeek, Groq, Ollama and OpenRouter stay fallbacks for memory-free reminder parsing.
-  - **Development override (2026-09-27):** while building, the dev `.env` sets `MEMORY_SAFE_PROVIDERS=gemini,openai,anthropic` and `EMBEDDING_PROVIDER=gemini` (`gemini-embedding-001` at 1536 dimensions) to use Gemini's free tier. Free-tier data may be used by Google, so this is for test data only; the server logs `event=ai_memory_providers_untrusted` whenever a development-only provider is allowed. **Before real users:** remove `gemini` from the list and re-embed memories with the production embedding model.
+  - **Development override (2026-09-27):** while building, the dev `.env` sets `MEMORY_SAFE_PROVIDERS=groq,gemini,openai,anthropic` with `GROQ_MODEL=openai/gpt-oss-120b` for chat AI calls, and `EMBEDDING_PROVIDER=gemini` (`gemini-embedding-001` at 1536 dimensions). Groq comes first because Gemini's free tier allows only 20 generation requests a day per model. Free-tier data may be used by these providers, so this is for test data only; the server logs `event=ai_memory_providers_untrusted` whenever a development-only provider is allowed. **Before real users:** remove `groq` and `gemini` from the list and re-embed memories with the production embedding model.
 - [x] **Chat retention** — Decided 2026-09-26: 90-day default; users can pick 30 days / 90 days / 1 year / forever in Settings. Built before 8.1 (`users.chat_retention_days`, daily cleanup job).
 - [x] **Health memories in 8A** — Decided 2026-09-26: not in 8.1. Sensitive facts (health, finance, religion, …) arrive in 8.2 together with encryption and the opt-in toggle, so they are never stored unprotected.
 - [ ] **People table timing** — keep in 8A (recommended) or defer?

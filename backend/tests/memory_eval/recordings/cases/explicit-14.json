@@ -1,0 +1,14 @@
+{
+  "case": "explicit-14",
+  "recorded_at": "2026-09-27T11:44:33+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your coffee consumption is none\",\"kind\":\"preference\",\"category\":\"personal\",\"key\":null,\"subject\":null,\"value\":null,\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

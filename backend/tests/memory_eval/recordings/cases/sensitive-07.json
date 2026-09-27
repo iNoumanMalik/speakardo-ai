@@ -1,0 +1,14 @@
+{
+  "case": "sensitive-07",
+  "recorded_at": "2026-09-27T11:26:05+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your blood type is B positive\",\"kind\":\"fact\",\"category\":\"health\",\"key\":null,\"subject\":null,\"value\":{\"text\":\"B positive\"},\"basis\":\"stated\",\"sensitive\":true,\"is_instruction\":false,\"temporary_days\":null}],\"query\":null,\"forget\":null}"
+    }
+  ]
+}

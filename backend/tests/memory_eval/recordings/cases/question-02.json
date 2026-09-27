@@ -1,0 +1,14 @@
+{
+  "case": "question-02",
+  "recorded_at": "2026-09-27T11:31:20+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_query\",\"reminder\":null,\"memories\":[],\"query\":{\"text\":\"What day was Sara born?\",\"key\":\"birthday\",\"subject\":\"Sara\"},\"forget\":null}"
+    }
+  ]
+}

@@ -32,6 +32,8 @@ from ai_service.router.rules import match_memory_rule
         ("Forget my office", ("memory_forget", "my office", "work_location", None)),
         ("forget Sara", ("memory_forget", "Sara", None, "sara")),
         ("forget that I work at XYZ", ("memory_forget", "I work at XYZ", None, None)),
+        ("Forget everything about Sara", ("memory_forget", "Sara", None, "sara")),
+        ("forget everything you know about my mother", ("memory_forget", "my mother", None, "mother")),
     ],
 )
 def test_memory_messages(message, expected):

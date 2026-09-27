@@ -1,0 +1,14 @@
+{
+  "case": "temporary-03",
+  "recorded_at": "2026-09-27T11:24:40+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your parents are staying with you this weekend\",\"kind\":\"event\",\"category\":\"people\",\"key\":null,\"subject\":\"parents\",\"value\":null,\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":7}],\"query\":null,\"forget\":null}"
+    }
+  ]
+}

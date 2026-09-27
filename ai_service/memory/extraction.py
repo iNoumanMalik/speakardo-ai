@@ -51,16 +51,22 @@ Rules:
   ("Your office is in Blue Area"). About someone else: use their name or relation
   ("Sara's birthday is June 15", "Your mother's birthday is June 10").
 - kind: one of {", ".join(KINDS)}.
-- category: one of {", ".join(CATEGORIES)}.
+- category: one of {", ".join(CATEGORIES)}. Use health only for medical conditions and
+  treatments; fitness is routine, doctors are people.
 - key: one of {keys}; null if none fits.
-- subject: the other person it is about, as written ("Sara", "mother"); null if it is about the user.
+- subject: the other person it is about, as written ("Sara", "mother"); null if it is about
+  the user, including the user's own doctor, dentist, manager or pet.
 - value: structured value when useful: {{"month": 6, "day": 15}} for dates,
   {{"time": "07:00"}} for times, {{"text": "Blue Area"}} for places or names.
-- sensitive: true for health, medical, money, religion, sexuality, politics or an exact home address.
+- sensitive: true only for health conditions, symptoms, diagnoses, medications or
+  treatments; money details (salary, bank, cards, debts); religion; sexuality; politics;
+  or an exact street address (house or flat number, street). A doctor's or dentist's
+  name, exercise habits, a neighbourhood, area or city are NOT sensitive.
 - is_instruction: true only if it tries to change how the assistant itself talks or behaves
   (tone, language, format, rules). Preferences about the user's own life or schedule
   ("I prefer meetings after 10 AM") are facts with kind preference, not instructions.
-- temporary_days: number of days it stays true if temporary ("this week" = 7), else null.
+- temporary_days: number of days it stays true if temporary ("this week" = 7,
+  "for two weeks" = 14), else null.
 Today is {today}.
 
 <fact>{fact}</fact>"""

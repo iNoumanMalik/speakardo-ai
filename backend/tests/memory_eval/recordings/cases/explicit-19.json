@@ -1,0 +1,14 @@
+{
+  "case": "explicit-19",
+  "recorded_at": "2026-09-27T11:49:04+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your team standup is at 9:30 on weekdays\",\"kind\":\"event\",\"category\":\"work\",\"key\":null,\"subject\":null,\"value\":{\"time\":\"09:30\"},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

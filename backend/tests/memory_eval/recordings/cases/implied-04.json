@@ -1,0 +1,14 @@
+{
+  "case": "implied-04",
+  "recorded_at": "2026-09-27T11:27:59+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"reminder_create\",\"reminder\":{\"task\":\"Pick up mom's medicine\",\"date\":\"2026-09-28\",\"time\":null,\"repeat\":null},\"memories\":[],\"query\":null,\"forget\":null}"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "case": "question-07",
+  "recorded_at": "2026-09-27T11:32:20+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_query\",\"reminder\":null,\"memories\":[],\"query\":{\"text\":\"Where does Hamza live?\",\"key\":\"home_city\",\"subject\":\"Hamza\"},\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"He lives in Dubai.\",\"used\":[\"m1\"]}"
+    }
+  ]
+}

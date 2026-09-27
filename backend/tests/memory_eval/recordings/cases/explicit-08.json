@@ -1,0 +1,14 @@
+{
+  "case": "explicit-08",
+  "recorded_at": "2026-09-27T11:43:20+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your favourite food is biryani\",\"kind\":\"preference\",\"category\":\"personal\",\"key\":\"favorite_food\",\"subject\":null,\"value\":{\"text\":\"biryani\"},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

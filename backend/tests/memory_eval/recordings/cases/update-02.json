@@ -1,0 +1,14 @@
+{
+  "case": "update-02",
+  "recorded_at": "2026-09-27T11:55:06+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your office is now in F-7.\",\"kind\":\"fact\",\"category\":\"places\",\"key\":\"work_location\",\"subject\":null,\"value\":{\"text\":\"F-7\"},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

@@ -33,6 +33,9 @@ class KeySpec:
     importance: float
     # How to phrase it in a question ("your office").
     label: str
+    # The slot always describes the user themself ("my dentist is Dr. Khan" is the
+    # user's dentist, not a memory about Dr. Khan), so it never has a subject.
+    users_own: bool = False
 
 
 KEYS: dict[str, KeySpec] = {
@@ -49,8 +52,8 @@ KEYS: dict[str, KeySpec] = {
     "workout_time": KeySpec("preference", "routine", 0.5, "workout time"),
     "meeting_preference": KeySpec("preference", "work", 0.6, "meeting preference"),
     "reminder_preference": KeySpec("preference", "routine", 0.6, "reminder preference"),
-    "doctor": KeySpec("fact", "people", 0.6, "doctor"),
-    "dentist": KeySpec("fact", "people", 0.6, "dentist"),
+    "doctor": KeySpec("fact", "people", 0.6, "doctor", users_own=True),
+    "dentist": KeySpec("fact", "people", 0.6, "dentist", users_own=True),
     "pet_name": KeySpec("fact", "personal", 0.5, "pet's name"),
     "favorite_food": KeySpec("preference", "personal", 0.3, "favourite food"),
     "favorite_drink": KeySpec("preference", "personal", 0.3, "favourite drink"),

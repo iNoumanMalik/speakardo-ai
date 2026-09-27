@@ -50,6 +50,11 @@ _SAVE = [
 ]
 
 _FORGET = [
+    # "Forget everything (you know) about Sara" → Sara
+    re.compile(
+        r"^(?:please\s+)?forget\s+(?:everything|all|anything)\s+(?:you\s+know\s+|you\s+have\s+)?about\s+(?P<target>.+)$",
+        _I,
+    ),
     re.compile(r"^(?:please\s+)?forget\s+(?:that\s+|about\s+|what\s+i\s+said\s+about\s+)?(?P<target>.+)$", _I),
     re.compile(
         r"^(?:please\s+)?(?:delete|remove|erase)\s+(?:the\s+)?(?:memory|memories|note)\s+(?:about\s+|of\s+|that\s+)?(?P<target>.+)$",

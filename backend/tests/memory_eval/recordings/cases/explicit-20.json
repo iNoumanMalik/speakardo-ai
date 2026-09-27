@@ -1,0 +1,14 @@
+{
+  "case": "explicit-20",
+  "recorded_at": "2026-09-27T11:49:16+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your flight to Istanbul is on October 20\",\"kind\":\"event\",\"category\":\"other\",\"key\":null,\"subject\":null,\"value\":{\"month\":10,\"day\":20},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

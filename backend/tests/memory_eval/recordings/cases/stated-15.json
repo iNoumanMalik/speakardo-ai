@@ -1,0 +1,14 @@
+{
+  "case": "stated-15",
+  "recorded_at": "2026-09-27T11:54:43+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your favourite drink is green tea\",\"kind\":\"preference\",\"category\":\"personal\",\"key\":\"favorite_drink\",\"subject\":null,\"value\":{\"text\":\"green tea\"},\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}],\"query\":null,\"forget\":null}"
+    }
+  ]
+}

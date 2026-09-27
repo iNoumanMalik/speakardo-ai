@@ -1,0 +1,21 @@
+{
+  "case": "question-09",
+  "recorded_at": "2026-09-27T11:33:07+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_query\",\"reminder\":null,\"memories\":[],\"query\":{\"text\":\"When is my dentist appointment?\",\"key\":\"dentist\",\"subject\":null},\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"Your dentist appointment is on Wed 30 Sep 2026 at 10:00.\",\"used\":[]}"
+    }
+  ]
+}

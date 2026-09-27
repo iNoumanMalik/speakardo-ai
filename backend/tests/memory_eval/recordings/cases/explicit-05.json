@@ -1,0 +1,14 @@
+{
+  "case": "explicit-05",
+  "recorded_at": "2026-09-27T11:42:46+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Ali's birthday is March 3\",\"kind\":\"important_date\",\"category\":\"people\",\"key\":\"birthday\",\"subject\":\"Ali\",\"value\":{\"month\":3,\"day\":3},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

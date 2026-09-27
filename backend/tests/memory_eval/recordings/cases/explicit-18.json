@@ -1,0 +1,14 @@
+{
+  "case": "explicit-18",
+  "recorded_at": "2026-09-27T11:48:51+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your mother's birthday is June 10\",\"kind\":\"important_date\",\"category\":\"people\",\"key\":\"birthday\",\"subject\":\"mother\",\"value\":{\"month\":6,\"day\":10},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

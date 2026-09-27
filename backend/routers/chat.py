@@ -249,7 +249,9 @@ async def _route(
             body, db, user, preparsed=decision.reminder_slots()
         )
         # "Remind me to call Sara, she's my sister": the fact is saved too.
-        actions, saved = await save_conversation_memories(decision.candidates(), db, user)
+        actions, saved = await save_conversation_memories(
+            decision.candidates(), db, user, body.message
+        )
         if saved:
             db.commit()
         response.memory_actions = [schemas.MemoryAction(**a) for a in actions]

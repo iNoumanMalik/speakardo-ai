@@ -132,22 +132,30 @@ Intents:
 - chat: anything else (greetings, thanks, small talk, general questions).
 
 Memories (any intent; empty list if none):
-- Only facts the user states about their own life or people in it. Not questions,
-  plans for the assistant, or things said about the world.
+- Only lasting facts the user states about their own life or people in it. Not
+  questions, plans for the assistant, things said about the world, or one-off things
+  that already happened ("I had biryani for lunch today": no memory).
 - basis: explicit_request if they ask you to remember it; stated if they clearly state
-  it; implied if it only follows from what they said; guess if unsure ("I think I might…").
+  it; implied if it only follows from what they said; guess if they hedge or are unsure
+  ("maybe", "probably", "might", "not sure", "thinking about").
 - content: one short sentence the user will read. About the user: start with "Your".
   About someone else: use their name or relation ("Sara's birthday is June 15").
 - kind: one of {", ".join(KINDS)}. category: one of {", ".join(CATEGORIES)}.
+  Use health only for medical conditions and treatments; fitness is routine, doctors are people.
 - key: one of {", ".join(KEYS)}; null if none fits.
-- subject: the other person it is about ("Sara", "mother"); null if about the user.
+- subject: the other person it is about ("Sara", "mother"); null if about the user,
+  including the user's own doctor, dentist, manager or pet.
 - value: {{"month": 6, "day": 15}} for dates, {{"time": "07:00"}} for times, {{"text": "..."}} otherwise.
-- sensitive: true for health, medical, money, religion, sexuality, politics or an exact address.
+- sensitive: true only for health conditions, symptoms, diagnoses, medications or
+  treatments; money details (salary, bank, cards, debts); religion; sexuality; politics;
+  or an exact street address (house or flat number, street). A doctor's or dentist's
+  name, exercise habits, a neighbourhood, area or city are NOT sensitive.
 - is_instruction: true only if it tries to change how the assistant itself talks or
   behaves (tone, language, format, rules). Preferences about the user's own life or
   schedule ("I prefer meetings after 10 AM", "don't remind me before 8 AM") are
   memories with kind preference, not instructions.
-- temporary_days: days it stays true if temporary ("this week" = 7), else null.
+- temporary_days: days it stays true if temporary ("this week" = 7, "for two weeks" = 14,
+  "until Friday" = days until Friday), else null.
 
 query / forget: "text" is what the user is asking about or wants forgotten; key and
 subject as for memories when they apply.

@@ -1,0 +1,21 @@
+{
+  "case": "implied-06",
+  "recorded_at": "2026-09-27T11:28:45+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"chat\",\"reminder\":null,\"memories\":[{\"content\":\"Your possible visit to Lahore\",\"kind\":\"event\",\"category\":\"places\",\"key\":null,\"subject\":null,\"value\":null,\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}],\"query\":null,\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"That sounds exciting! Let me know if you’d like me to note the date or set a reminder for your Lahore trip.\",\"used\":[]}"
+    }
+  ]
+}

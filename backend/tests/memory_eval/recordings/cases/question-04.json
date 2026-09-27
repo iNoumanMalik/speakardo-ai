@@ -1,0 +1,14 @@
+{
+  "case": "question-04",
+  "recorded_at": "2026-09-27T11:31:33+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"Your dog's name is Bruno.\",\"used\":[\"m1\"]}"
+    }
+  ]
+}

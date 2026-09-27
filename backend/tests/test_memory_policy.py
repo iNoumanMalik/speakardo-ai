@@ -61,6 +61,7 @@ def test_learn_from_chat_off_keeps_only_explicit_requests():
         {"content": "I'm diabetic", "category": "personal", "key": None},
         {"content": "My salary is 200k", "category": "work", "key": None},
         {"content": "I take insulin every morning", "category": "routine", "key": None},
+        {"content": "Your home address is House 12, Street 5, Islamabad", "category": "places", "key": None},
         {"content": "Anything at all", "category": "health", "key": None},
         {"content": "Anything at all", "category": "personal", "key": None, "sensitive": True},
     ],
@@ -113,10 +114,17 @@ def test_ai_output_is_clamped_to_the_vocabulary():
 def test_a_known_key_files_the_memory_consistently():
     office = MemoryCandidate(content="Your office is in F-7", category="places", key="work_location")
     assert office.normalised().category == "work"
-    # A health category is kept, so the sensitive check still refuses it.
+    # The key files it under People, but the content check still refuses a condition.
     doctor = MemoryCandidate(content="Dr Khan treats my asthma", category="health", key="doctor")
-    assert doctor.normalised().category == "health"
+    assert doctor.normalised().category == "people"
     assert decide(doctor, ON).decision is Decision.SKIP_SENSITIVE
+    # A dentist's name or gym times are not health data, whatever category the AI picked.
+    dentist = MemoryCandidate(content="Your dentist is Dr. Khan", category="health",
+                              key="dentist", subject="Dr. Khan")
+    assert decide(dentist, ON).should_save
+    assert dentist.normalised().subject is None  # the user's dentist, not a memory about Dr. Khan
+    gym = MemoryCandidate(content="Your gym sessions are at 7 PM", category="health", key="workout_time")
+    assert decide(gym, ON).should_save
 
 
 def test_keys_and_subjects():
@@ -134,3 +142,58 @@ def test_a_personal_key_about_someone_else_is_filed_under_people():
     mine = MemoryCandidate(content="Your birthday is March 3", key="birthday")
     assert sara.normalised().category == "people"
     assert mine.normalised().category == "personal"
+
+
+# --- rules checked against what the user said ---------------------------------------
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["Probably going to visit Lahore sometime", "Not sure if I'll keep my car", "I'm thinking about learning French"],
+)
+def test_hedged_statements_are_not_saved(message):
+    result = decide(_candidate(content="Your plan", key=None), ON, source_text=message)
+    assert result.decision is Decision.SKIP_UNCERTAIN
+
+
+def test_hedges_do_not_block_an_explicit_request():
+    candidate = _candidate(content="You might switch jobs", key=None, basis="explicit_request")
+    assert decide(candidate, ON, source_text="remember that I might switch jobs").should_save
+
+
+def test_one_off_events_stay_in_chat_history():
+    lunch = _candidate(content="Your lunch was biryani today", key=None, kind="event", category="other")
+    assert decide(lunch, ON, source_text="I had biryani for lunch today").decision is Decision.SKIP_UNCERTAIN
+    # A lasting fact said the same way is still saved.
+    promotion = _candidate(content="You are a team lead", key="job_title")
+    assert decide(promotion, ON, source_text="I got promoted to team lead today").should_save
+
+
+def test_names_the_user_never_said_are_not_saved():
+    typo = _candidate(content="Your husband's name is Faisl", key=None, category="people")
+    assert decide(typo, ON, source_text="My husband's name is Faisal").decision is Decision.SKIP_UNGROUNDED
+    right = _candidate(content="Your husband's name is Faisal", key=None, category="people")
+    assert decide(right, ON, source_text="My husband's name is Faisal").should_save
+    contraction = _candidate(content="You're in Karachi this week", key=None, category="places")
+    assert decide(contraction, ON, source_text="I'm in Karachi this week").should_save
+
+
+@pytest.mark.parametrize(
+    "message, days",
+    [
+        ("I'm travelling to Dubai for two weeks", 14),
+        ("I'm in Karachi this week", 7),
+        ("I'm on leave until Friday", 7),
+        ("My parents are staying with us this weekend", 3),
+        ("I'm working from home for the next 3 days", 3),
+        ("Our office moved to Gulberg last month", None),
+    ],
+)
+def test_durations_make_facts_temporary(message, days):
+    candidate = _candidate(content="Your plans", key=None, category="other", temporary_days=None)
+    assert decide(candidate, ON, source_text=message).temporary_days == days
+
+
+def test_lasting_facts_never_become_temporary():
+    birthday = _candidate(content="Sara's birthday is today", key="birthday", subject="Sara")
+    assert decide(birthday, ON, source_text="Sara's birthday is today").temporary_days is None

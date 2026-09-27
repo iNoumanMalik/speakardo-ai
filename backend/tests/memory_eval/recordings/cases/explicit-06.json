@@ -1,0 +1,14 @@
+{
+  "case": "explicit-06",
+  "recorded_at": "2026-09-27T11:42:57+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your employer is Systems Limited\",\"kind\":\"fact\",\"category\":\"work\",\"key\":\"employer\",\"subject\":null,\"value\":{\"text\":\"Systems Limited\"},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

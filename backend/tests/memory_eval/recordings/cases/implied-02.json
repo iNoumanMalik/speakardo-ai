@@ -1,0 +1,21 @@
+{
+  "case": "implied-02",
+  "recorded_at": "2026-09-27T11:27:25+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"chat\",\"reminder\":null,\"memories\":[],\"query\":null,\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"Canada sounds exciting! If you ever want to set a reminder to research moving or just chat about it, just let me know.\",\"used\":[]}"
+    }
+  ]
+}

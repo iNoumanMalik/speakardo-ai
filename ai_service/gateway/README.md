@@ -9,7 +9,7 @@ Production-oriented async orchestration for reminder extraction and future AI ta
 | OpenAI | `OPENAI_API_KEY` | `gpt-4o-mini` |
 | Gemini | `GEMINI_API_KEY` | `models/gemini-2.5-flash` |
 | DeepSeek | `DEEPSEEK_API_KEY` | `deepseek-chat` |
-| Groq | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
+| Groq | `GROQ_API_KEY` | `openai/gpt-oss-120b` |
 | Anthropic | `ANTHROPIC_API_KEY` | `claude-haiku-4-5` |
 | Ollama | `OLLAMA_BASE_URL` (optional key) | `llama3.2` |
 | OpenRouter | `OPENROUTER_API_KEY` | `openai/gpt-4o-mini` |

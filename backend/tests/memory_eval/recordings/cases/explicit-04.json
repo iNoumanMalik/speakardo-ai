@@ -1,0 +1,14 @@
+{
+  "case": "explicit-04",
+  "recorded_at": "2026-09-27T11:42:34+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your dentist is Dr. Khan.\",\"kind\":\"relationship\",\"category\":\"people\",\"key\":\"dentist\",\"subject\":null,\"value\":{\"text\":\"Dr. Khan\"},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

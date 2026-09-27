@@ -1,0 +1,21 @@
+{
+  "case": "question-08",
+  "recorded_at": "2026-09-27T11:32:43+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_query\",\"reminder\":null,\"memories\":[],\"query\":{\"text\":\"What car do I drive?\",\"key\":null,\"subject\":null},\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"You drive a white Honda Civic.\",\"used\":[\"m1\"]}"
+    }
+  ]
+}

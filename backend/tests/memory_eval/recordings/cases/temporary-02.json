@@ -1,0 +1,14 @@
+{
+  "case": "temporary-02",
+  "recorded_at": "2026-09-27T11:24:27+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_save\",\"reminder\":null,\"memories\":[{\"content\":\"Your leave ends on Friday\",\"kind\":\"event\",\"category\":\"personal\",\"key\":null,\"subject\":null,\"value\":{\"date\":\"2026-09-30\"},\"basis\":\"stated\",\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":3}],\"query\":null,\"forget\":null}"
+    }
+  ]
+}

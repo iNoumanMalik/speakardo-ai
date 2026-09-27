@@ -1,0 +1,14 @@
+{
+  "case": "explicit-12",
+  "recorded_at": "2026-09-27T11:44:08+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your cat's name is Mishu.\",\"kind\":\"fact\",\"category\":\"personal\",\"key\":\"pet_name\",\"subject\":null,\"value\":{\"text\":\"Mishu\"},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

@@ -51,6 +51,8 @@ docker compose -f docker/docker-compose.yml up -d
 source venv/bin/activate                 # needs requirements-dev.txt installed for pytest
 uvicorn app:app --reload                 # http://localhost:8000
 pytest                                   # Postgres test DB (ai_reminder_test), never SQLite
+pytest tests/memory_eval -s              # memory eval (replays recorded AI output; free)
+EVAL_RECORD=missing EVAL_GEMINI_MODEL=gemini-2.5-flash-lite pytest tests/memory_eval -s   # record new cases (live AI)
 alembic -c alembic.ini upgrade head      # apply migrations (works on an empty database)
 
 # Mobile: run from mobile_app/
@@ -67,7 +69,7 @@ flutter analyze
 - If `DATABASE_URL` is unset, the backend falls back to SQLite (`backend/ai_reminder.db`). Module 8 needs Postgres with pgvector; never build memory features on SQLite.
 - Tests use `TEST_DATABASE_URL` (default: the Docker `ai_reminder_test` database). `tests/conftest.py` sets it after `env_config` loads `.env`, and refuses any target that isn't a local `*_test` database.
 - `MEMORY_SAFE_PROVIDERS` (default `openai,anthropic`) lists the only providers allowed to receive memories or chat history. Pass `personal_data=True` to `AIRouter.generate` for those calls; embeddings (`ai_service/gateway/embeddings.py`) always require the embedding provider to be on this list.
-- **Development uses Gemini's free tier for memory work**: the dev `.env` sets `MEMORY_SAFE_PROVIDERS=gemini,openai,anthropic` and `EMBEDDING_PROVIDER=gemini`. Test data only; the startup warning `event=ai_memory_providers_untrusted` is expected in dev and must not appear in production.
+- **Development uses free tiers for memory work**: the dev `.env` sets `MEMORY_SAFE_PROVIDERS=groq,gemini,openai,anthropic`, `GROQ_MODEL=openai/gpt-oss-120b` and `EMBEDDING_PROVIDER=gemini`. Groq answers the chat AI calls; Gemini makes the embeddings. Test data only; the startup warning `event=ai_memory_providers_untrusted` is expected in dev and must not appear in production.
 - LLM providers are set by `AI_FALLBACK_CHAIN` plus `*_API_KEY` variables.
 - **Never print, copy or commit secrets:** `.env` files, `backend/firebase-service-account.json`, `google-services.json`, `GoogleService-Info.plist`.
 
@@ -111,7 +113,7 @@ flutter analyze
 - macOS ignores filename case: `docs/Setup` and `docs/setup` are the same folder. Use lowercase kebab-case.
 - The backend imports `ai_service` through a `sys.path` insert (see `backend/routers/chat.py`).
 - Chat routing (`routers/chat.py` `_route`): a pending reminder draft → reminder flow; memory rules (`ai_service/router/rules.py`) → memory engine; greetings and clear reminder words ("remind", "wake me", "alarm") → reminder flow; everything else → one turn-router AI call (`ai_service/router/turn.py`). If the router fails, questions get "try again" and other messages fall back to the reminder parser. Tests block every real AI call by default (`block_real_ai` in `tests/conftest.py`).
-- Gemini's free tier allows only **20 requests per day** for `gemini-2.5-flash`, and each routed chat turn can use two. For development set `GEMINI_MODEL=gemini-2.5-flash-lite` (separate, larger quota). `event=turn_router_unavailable` in the log with `RESOURCE_EXHAUSTED` means the quota ran out.
+- Gemini's free tier allows only **20 generation requests per day per model** (`gemini-2.5-flash` and `gemini-2.5-flash-lite` alike), and a routed chat turn can use two; that's why Groq comes first in development. Gemini embeddings have their own, larger limit. `event=turn_router_unavailable` in the log means every allowed provider failed: look for `RESOURCE_EXHAUSTED` (quota) or 404 (a removed model).
 - Memory persistence lives in `backend/services/memory_store.py`; `ai_service/memory/` is pure logic (keys, save policy, extraction prompt). Never log memory content or put it in `memory_events.detail`.
 - Homebrew's `pgvector` formula only builds for `postgresql@17`/`@18`, so local Postgres runs in Docker (`pgvector/pgvector:pg16`), not Homebrew. Stop any Homebrew Postgres first: both use port 5432.
 - `env_config.py` loads `.env` with `override=True`, so `DATABASE_URL=… alembic …` on the command line is silently ignored. Change `.env`, or set the variable after `env_config` is imported (as `tests/conftest.py` does).

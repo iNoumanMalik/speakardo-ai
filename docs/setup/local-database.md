@@ -79,7 +79,7 @@ If Postgres isn't running, the database tests stop with a message telling you to
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `TEST_DATABASE_URL` | `postgresql+psycopg2://user:password@localhost:5432/ai_reminder_test` | Database the test suite migrates and wipes |
-| `MEMORY_SAFE_PROVIDERS` | `openai,anthropic` | The only AI providers allowed to receive memories or chat history. A value with no valid names allows none. Development uses `gemini,openai,anthropic` (see below) |
+| `MEMORY_SAFE_PROVIDERS` | `openai,anthropic` | The only AI providers allowed to receive memories or chat history. A value with no valid names allows none. Development uses `groq,gemini,openai,anthropic` (see below) |
 | `EMBEDDING_PROVIDER` | `openai` | `openai` or `gemini`. Must also be listed in `MEMORY_SAFE_PROVIDERS` |
 | `EMBEDDING_MODEL` | `text-embedding-3-small` (openai) / `gemini-embedding-001` (gemini) | Embedding model for the chosen provider |
 | `EMBEDDING_DIMENSIONS` | `1536` | Must stay 1536 (the size of the memory vector column) |
@@ -89,11 +89,12 @@ If Postgres isn't running, the database tests stop with a message telling you to
 **Free development setup.** To build memory features without paid API credits, add to `.env`:
 
 ```bash
-MEMORY_SAFE_PROVIDERS=gemini,openai,anthropic
+MEMORY_SAFE_PROVIDERS=groq,gemini,openai,anthropic
+GROQ_MODEL=openai/gpt-oss-120b
 EMBEDDING_PROVIDER=gemini
 ```
 
-Only your `GEMINI_API_KEY` needs to work. Also set `GEMINI_MODEL=gemini-2.5-flash-lite`: the free tier allows only 20 requests a day for `gemini-2.5-flash`, and a chat turn can use two. Google may use free-tier Gemini data, so use test data only. The server logs `event=ai_memory_providers_untrusted` at startup as a reminder. Remove `gemini` from the list before real users.
+You need a working `GROQ_API_KEY` (chat AI calls) and `GEMINI_API_KEY` (embeddings). Groq comes first because Gemini's free tier allows only 20 generation requests a day per model, and a chat turn can use two; Gemini's embedding limit is separate and larger. Free-tier data may be used by the provider, so use test data only. The server logs `event=ai_memory_providers_untrusted` at startup as a reminder. Remove `groq` and `gemini` from the list before real users.
 
 ## 6. Supabase (shared database)
 

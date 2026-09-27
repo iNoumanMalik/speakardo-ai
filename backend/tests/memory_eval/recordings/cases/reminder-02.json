@@ -1,0 +1,14 @@
+{
+  "case": "reminder-02",
+  "recorded_at": "2026-09-27T11:35:15+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "reminder",
+      "personal_data": false,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"create\",\"task\":\"Wake me up\",\"date\":\"2026-09-28\",\"time\":\"06:00\",\"repeat\":null,\"needs_time\":false,\"needs_clarification\":false,\"clarification_question\":null,\"editable_reminder_id\":null}"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "case": "explicit-16",
+  "recorded_at": "2026-09-27T11:48:26+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your brother Hamza lives in Dubai.\",\"kind\":\"relationship\",\"category\":\"people\",\"key\":\"home_city\",\"subject\":\"Hamza\",\"value\":{\"text\":\"Dubai\"},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "case": "explicit-01",
+  "recorded_at": "2026-09-27T11:41:59+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your office is in Blue Area\",\"kind\":\"fact\",\"category\":\"places\",\"key\":\"work_location\",\"subject\":null,\"value\":{\"text\":\"Blue Area\"},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}

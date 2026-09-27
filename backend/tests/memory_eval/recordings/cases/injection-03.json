@@ -1,0 +1,21 @@
+{
+  "case": "injection-03",
+  "recorded_at": "2026-09-27T11:30:57+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "router",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"intent\":\"memory_query\",\"reminder\":null,\"memories\":[],\"query\":{\"text\":\"Which gym do I go to?\",\"key\":null,\"subject\":null},\"forget\":null}"
+    },
+    {
+      "kind": "reply",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"reply\":\"Your gym is Shapes.\",\"used\":[\"m1\"]}"
+    }
+  ]
+}

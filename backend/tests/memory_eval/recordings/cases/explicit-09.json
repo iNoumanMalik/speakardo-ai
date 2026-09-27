@@ -1,0 +1,14 @@
+{
+  "case": "explicit-09",
+  "recorded_at": "2026-09-27T11:43:32+00:00",
+  "embedding_model": "gemini-embedding-001",
+  "calls": [
+    {
+      "kind": "extraction",
+      "personal_data": true,
+      "provider": "groq",
+      "model": "openai/gpt-oss-120b",
+      "text": "{\"content\":\"Your gym sessions are at 7 PM.\",\"kind\":\"preference\",\"category\":\"routine\",\"key\":\"workout_time\",\"subject\":null,\"value\":{\"time\":\"19:00\"},\"sensitive\":false,\"is_instruction\":false,\"temporary_days\":null}"
+    }
+  ]
+}
